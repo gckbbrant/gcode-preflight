@@ -213,7 +213,32 @@ fn arc_geometry(
     Some(factor) => factor
     None => return (None, 0.0, 0.0)
   }
-  if !has_word(block, 'I') && !has_word(block, 'J') {
+  let has_i = has_word(block, 'I')
+  let has_j = has_word(block, 'J')
+  let has_r = has_word(block, 'R')
+  if has_r && (has_i || has_j) {
+    add_diagnostic(
+      diagnostics,
+      block.line,
+      "CONFLICTING_ARC_FORMATS",
+      "Specify either R radius format or incremental I/J center format, not both.",
+      Error,
+      false,
+    )
+    return (None, 0.0, 0.0)
+  }
+  if has_r {
+    return radius_arc_geometry(
+      diagnostics,
+      block,
+      start,
+      end,
+      block_word(block, 'R').unwrap() * factor,
+      state.motion is Some(2),
+      profile,
+    )
+  }
+  if !has_i && !has_j {
     add_diagnostic(
       diagnostics,
       block.line,
@@ -265,6 +290,121 @@ fn arc_geometry(
 }
 
 ///|
+fn radius_arc_geometry(
+  diagnostics : Array[Diagnostic],
+  block : GCodeBlock,
+  start : Vec3,
+  end : Vec3,
+  signed_radius : Double,
+  clockwise : Bool,
+  profile : MachineProfile,
+) -> (Vec3?, Double, Double) {
+  let dx = end.x - start.x
+  let dy = end.y - start.y
+  let chord = (dx * dx + dy * dy).sqrt()
+  let radius = signed_radius.abs()
+  let invalid_reason = if !has_word(block, 'X') && !has_word(block, 'Y') {
+    Some("R-format arcs require an X or Y endpoint.")
+  } else if radius <= 0.000000001 {
+    Some("R-format arc radius must be non-zero.")
+  } else if chord <= 0.000000001 {
+    Some("R-format arcs cannot describe a full circle; use I/J center offsets.")
+  } else if chord > 2.0 * radius + profile.arc_tolerance_mm {
+    Some("The R-format arc chord is longer than its diameter beyond tolerance.")
+  } else {
+    None
+  }
+  match invalid_reason {
+    Some(message) => {
+      add_diagnostic(
+        diagnostics,
+        block.line,
+        "INVALID_R_ARC",
+        message,
+        Error,
+        false,
+      )
+      return (None, 0.0, 0.0)
+    }
+    None => ()
+  }
+  let half_chord = chord / 2.0
+  let height_squared = radius * radius - half_chord * half_chord
+  let height = if height_squared > 0.0 { height_squared.sqrt() } else { 0.0 }
+  let midpoint_x = (start.x + end.x) / 2.0
+  let midpoint_y = (start.y + end.y) / 2.0
+  let perpendicular_x = -dy / chord
+  let perpendicular_y = dx / chord
+  let centers : Array[Vec3] = [
+    {
+      x: midpoint_x + perpendicular_x * height,
+      y: midpoint_y + perpendicular_y * height,
+      z: start.z,
+    },
+    {
+      x: midpoint_x - perpendicular_x * height,
+      y: midpoint_y - perpendicular_y * height,
+      z: start.z,
+    },
+  ]
+  let want_major = signed_radius < 0.0
+  let mut selected_center : Vec3? = None
+  let mut selected_sweep = 0.0
+  let mut selected_radius = 0.0
+  for center in centers {
+    let start_angle = @math.atan2(start.y - center.y, start.x - center.x)
+    let end_angle = @math.atan2(end.y - center.y, end.x - center.x)
+    let sweep = arc_sweep(start_angle, end_angle, clockwise, false)
+    let magnitude = sweep.abs()
+    let fits_radius_sign = if want_major {
+      magnitude > @math.PI + 0.000000001
+    } else {
+      magnitude <= @math.PI + 0.000000001
+    }
+    if selected_center is None && fits_radius_sign {
+      selected_center = Some(center)
+      selected_sweep = sweep
+      let radius_x = start.x - center.x
+      let radius_y = start.y - center.y
+      selected_radius = (radius_x * radius_x + radius_y * radius_y).sqrt()
+    }
+  }
+  match selected_center {
+    Some(center) => {
+      let sweep_magnitude = selected_sweep.abs()
+      let full_turn = 2.0 * @math.PI
+      let warning_margin = @math.PI / 12.0
+      if (sweep_magnitude - @math.PI).abs() <= warning_margin ||
+        full_turn - sweep_magnitude <= warning_margin {
+        add_diagnostic(
+          diagnostics,
+          block.line,
+          "R_ARC_ROUNDING_SENSITIVE",
+          "R-format arcs near a half or full circle amplify endpoint rounding; consider I/J center format.",
+          Warning,
+          false,
+        )
+      }
+      let arc_xy_length = selected_radius * selected_sweep.abs()
+      let dz = end.z - start.z
+      let length = (arc_xy_length * arc_xy_length + dz * dz).sqrt()
+      (Some(center), selected_sweep, length)
+    }
+    None => {
+      add_diagnostic(
+        diagnostics,
+        block.line,
+        "INVALID_R_ARC",
+        "The radius sign does not select a valid minor or major arc for these endpoints.",
+        Error,
+        false,
+      )
+      (None, 0.0, 0.0)
+    }
+  }
+}
+
+///|
 fn check_arc_extrema(
   diagnostics : Array[Diagnostic],
   block : GCodeBlock,
@@ -304,7 +444,6 @@ fn has_poisoning_diagnostic(diagnostic : Diagnostic) -> Bool {
     diagnostic.code == "UNSUPPORTED_G_CODE" ||
     diagnostic.code == "UNSUPPORTED_M_CODE" ||
     diagnostic.code == "UNSUPPORTED_WORD" ||
-    diagnostic.code == "R_ARC_UNSUPPORTED" ||
     diagnostic.code == "MACRO_UNSUPPORTED" ||
     diagnostic.code == "SUBPROGRAM_UNSUPPORTED" ||
     diagnostic.code == "BLOCK_DELETE_UNSUPPORTED" ||

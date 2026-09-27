@@ -102,11 +102,8 @@ test "feed and spindle omissions are detected as program errors" {
 }
 
 ///|
-test "R arcs and macro expressions are incomplete" {
-  let report = analyze("G2 X1 Y0 R1\nG1 X#1", test_profile())
-  assert_true(
-    report.diagnostics.any(d => d.code == "R_ARC_UNSUPPORTED" && d.incomplete),
-  )
+test "macro expressions remain incomplete" {
+  let report = analyze("G17 G21 G90 G54 G40 G49 G1 X#1", test_profile())
   assert_true(
     report.diagnostics.any(d => d.code == "MACRO_UNSUPPORTED" && d.incomplete),
   )
@@ -157,6 +154,118 @@ test "clockwise and counterclockwise I/J arcs choose opposite sweeps" {
   assert_true(ccw.segments[0].sweep_radians > 0.0)
   assert_true((cw.distance_mm - 15.0 * @math.PI).abs() < 0.000001)
   assert_true((ccw.distance_mm - 5.0 * @math.PI).abs() < 0.000001)
+}
+
+///|
+test "signed R arcs select minor and major sweeps without G91.1" {
+  let profile = test_profile_with(
+    Some({ x: 10.0, y: 0.0, z: 0.0, }),
+    { x: 0.0, y: 0.0, z: 0.0, },
+    100.0,
+    100.0,
+  )
+  let setup = "G17 G21 G90 G94 G54 G40 G49 F100\n"
+  let ccw_minor = analyze(setup + "G3 X5 Y8.660254037844386 R10", profile)
+  let ccw_major = analyze(setup + "G3 X5 Y8.660254037844386 R-10", profile)
+  let cw_minor = analyze(setup + "G2 X5 Y8.660254037844386 R10", profile)
+  let cw_major = analyze(setup + "G2 X5 Y8.660254037844386 R-10", profile)
+  assert_true(ccw_minor.status is Pass)
+  assert_true(ccw_major.status is Pass)
+  assert_true(cw_minor.status is Pass)
+  assert_true(cw_major.status is Pass)
+  assert_true(
+    (ccw_minor.segments[0].sweep_radians - @math.PI / 3.0).abs() < 0.000001,
+  )
+  assert_true(
+    (ccw_major.segments[0].sweep_radians - 5.0 * @math.PI / 3.0).abs() <
+    0.000001,
+  )
+  assert_true(
+    (cw_minor.segments[0].sweep_radians + @math.PI / 3.0).abs() < 0.000001,
+  )
+  assert_true(
+    (cw_major.segments[0].sweep_radians + 5.0 * @math.PI / 3.0).abs() < 0.000001,
+  )
+  assert_true((ccw_minor.distance_mm - 10.0 * @math.PI / 3.0).abs() < 0.000001)
+}
+
+///|
+test "R arcs reject invalid chords, full circles, mixed formats, and non-arcs" {
+  let origin_profile = test_profile()
+  let invalid_chord = analyze(
+    "G17 G21 G90 G91.1 G94 G54 G40 G49 F100\nG3 X20 Y0 R5", origin_profile,
+  )
+  assert_true(invalid_chord.status is Fail)
+  assert_true(invalid_chord.diagnostics.any(d => d.code == "INVALID_R_ARC"))
+  let zero_radius = analyze(
+    "G17 G21 G90 G91.1 G94 G54 G40 G49 F100\nG3 X1 Y0 R0", origin_profile,
+  )
+  assert_true(zero_radius.status is Fail)
+  assert_true(zero_radius.diagnostics.any(d => d.code == "INVALID_R_ARC"))
+  let start_profile = test_profile_with(
+    Some({ x: 10.0, y: 0.0, z: 0.0, }),
+    { x: 0.0, y: 0.0, z: 0.0, },
+    100.0,
+    100.0,
+  )
+  let full_circle = analyze(
+    "G17 G21 G90 G91.1 G94 G54 G40 G49 F100\nG3 X10 Y0 R10", start_profile,
+  )
+  assert_true(full_circle.status is Fail)
+  assert_true(full_circle.diagnostics.any(d => d.code == "INVALID_R_ARC"))
+  let mixed = analyze(
+    "G17 G21 G90 G91.1 G94 G54 G40 G49 F100\nG3 X5 Y8.660254 I-10 J0 R10", start_profile,
+  )
+  assert_true(mixed.status is Fail)
+  assert_true(mixed.diagnostics.any(d => d.code == "CONFLICTING_ARC_FORMATS"))
+  let radius_without_arc = analyze(
+    "G17 G21 G90 G94 G54 G40 G49 F100\nG1 X5 R10", origin_profile,
+  )
+  assert_true(radius_without_arc.status is Incomplete)
+  assert_true(
+    radius_without_arc.diagnostics.any(d => d.code == "R_WITHOUT_ARC"),
+  )
+  let duplicate_radius = analyze(
+    "G17 G21 G90 G91.1 G94 G54 G40 G49 F100\nG3 X5 Y5 R5 R5", origin_profile,
+  )
+  assert_true(duplicate_radius.status is Incomplete)
+  assert_true(duplicate_radius.diagnostics.any(d => d.code == "DUPLICATE_WORD"))
+}
+
+///|
+test "R-format diametric arcs are valid only for the positive minor form" {
+  let profile = test_profile_with(
+    Some({ x: 10.0, y: 0.0, z: 0.0, }),
+    { x: 0.0, y: 0.0, z: 0.0, },
+    100.0,
+    100.0,
+  )
+  let setup = "G17 G21 G90 G94 G54 G40 G49 F100\n"
+  let positive = analyze(setup + "G3 X-10 Y0 R10", profile)
+  let negative = analyze(setup + "G3 X-10 Y0 R-10", profile)
+  assert_true(positive.status is Pass)
+  assert_true((positive.segments[0].sweep_radians - @math.PI).abs() < 0.000001)
+  assert_true(
+    positive.diagnostics.any(d => d.code == "R_ARC_ROUNDING_SENSITIVE"),
+  )
+  assert_true(negative.status is Fail)
+  assert_true(negative.diagnostics.any(d => d.code == "INVALID_R_ARC"))
+  let tiny_minor = analyze(
+    setup + "G3 X9.961946980917455 Y0.871557427476582 R10",
+    profile,
+  )
+  let near_full = analyze(
+    setup + "G3 X9.961946980917455 Y0.871557427476582 R-10",
+    profile,
+  )
+  assert_true(tiny_minor.status is Pass)
+  assert_true(
+    !tiny_minor.diagnostics.any(d => d.code == "R_ARC_ROUNDING_SENSITIVE"),
+  )
+  assert_true(near_full.status is Pass)
+  assert_true(
+    near_full.diagnostics.any(d => d.code == "R_ARC_ROUNDING_SENSITIVE"),
+  )
 }
 
 ///|

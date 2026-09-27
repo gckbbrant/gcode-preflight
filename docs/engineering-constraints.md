@@ -10,22 +10,22 @@ the report `INCOMPLETE`; a later clean block cannot restore `PASS`.
 Examples that require `INCOMPLETE` include:
 
 - macros, parameter expressions, subprogram calls, and canned cycles;
-- R-format arcs, arcs outside G17/XY, or unsupported arc geometry;
+- arcs outside G17/XY or unsupported arc geometry;
 - G18/G19, G41/G42, G43, G52/G92, and other unsupported coordinate or tool
   transformations;
 - an unknown G/M code that may affect execution state;
 - a motion block before required units, distance, work-coordinate, and
-  compensation-cancel modes are established; arcs additionally require G17 and
-  G91.1, and feed moves require G94;
+  compensation-cancel modes are established; arcs require G17, I/J center
+  arcs additionally require G91.1, and feed moves require G94;
 - any movement when the starting position is unknown. Provide
   initial_position_g54_mm in the profile to identify the first machine point;
 - unsupported semantics anywhere in the program, even when preceding moves
   were analyzable.
 
-Fully understood program errors such as missing F/S, malformed I/J radius,
-missing G4 P, or a travel-limit violation produce FAIL. A missing tool-change
-duration makes the time estimate incomplete while geometric analysis can
-remain complete.
+Fully understood program errors such as missing F/S, malformed I/J or R arc
+geometry, missing G4 P, or a travel-limit violation produce FAIL. A missing
+tool-change duration makes the time estimate incomplete while geometric
+analysis can remain complete.
 
 The implementation must express this rule in the report-status calculation
 and test that unsupported or ambiguous input never produces `PASS`.
@@ -34,7 +34,11 @@ and test that unsupported or ambiguous input never produces `PASS`.
 
 The supported profile is a three-axis mill using G54, G17, millimeter/inch
 units, absolute/incremental endpoint coordinates, incremental I/J arc centers,
-and G94 feed-per-minute. The profile's optional initial_position_g54_mm field
+signed R-format arcs, and G94 feed-per-minute. Positive R selects a sweep up to
+180 degrees; negative R selects a sweep greater than 180 degrees. R format
+requires distinct XY endpoints, so full circles use I/J centers. R arcs within
+15 degrees of a half or full circle receive a non-blocking rounding-sensitivity
+warning. The profile's optional initial_position_g54_mm field
 is required for programs that move; it is a G54 coordinate in millimeters and
 is converted to machine coordinates using g54_offset_mm. Travel checks cover
 programmed control points and interpolated XY arc extrema. They do not account for tool radius, holder

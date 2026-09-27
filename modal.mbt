@@ -226,11 +226,6 @@ fn update_modal_state(
       } else if code_is(word.value, 6.0) {
         m6 = true
       }
-    } else if word.address == 'R' {
-      mode_diagnostic(
-        diagnostics, line, "R_ARC_UNSUPPORTED", "R-format arc geometry is not supported; use incremental I/J centers.",
-        true,
-      )
     } else if word.address == 'O' {
       mode_diagnostic(
         diagnostics, line, "SUBPROGRAM_UNSUPPORTED", "Program labels and subprograms are not interpreted.",
@@ -259,6 +254,7 @@ fn update_modal_state(
       word.address != 'Z' &&
       word.address != 'I' &&
       word.address != 'J' &&
+      word.address != 'R' &&
       word.address != 'F' &&
       word.address != 'S' &&
       word.address != 'T' &&
@@ -371,8 +367,12 @@ fn update_modal_state(
     block_word(block, 'Z') is Some(_)
   let has_arc_center = block_word(block, 'I') is Some(_) ||
     block_word(block, 'J') is Some(_)
+  let has_arc_radius = block_word(block, 'R') is Some(_)
   let has_axis = has_xyz ||
-    ((next.motion is Some(2) || next.motion is Some(3)) && has_arc_center)
+    (
+      (next.motion is Some(2) || next.motion is Some(3)) &&
+      (has_arc_center || has_arc_radius)
+    )
   if dwell {
     if motion_code is Some(_) || has_axis {
       mode_diagnostic(
@@ -394,11 +394,19 @@ fn update_modal_state(
       true,
     )
   }
+  let effective_motion = match motion_code {
+    Some(code) => Some(code)
+    None => next.motion
+  }
+  let radius_on_arc = !dwell &&
+    (effective_motion is Some(2) || effective_motion is Some(3))
+  if has_arc_radius && !radius_on_arc {
+    mode_diagnostic(
+      diagnostics, line, "R_WITHOUT_ARC", "R is supported only as the radius of a G2/G3 arc.",
+      true,
+    )
+  }
   if has_axis {
-    let effective_motion = match motion_code {
-      Some(code) => Some(code)
-      None => next.motion
-    }
     match effective_motion {
       Some(0) | Some(1) | Some(2) | Some(3) => {
         require_mode(diagnostics, line, next.units_mm, "G20 or G21 units")
@@ -428,12 +436,14 @@ fn update_modal_state(
         )
         if effective_motion is Some(2) || effective_motion is Some(3) {
           require_mode(diagnostics, line, next.plane_xy, "G17 XY plane")
-          require_mode(
-            diagnostics,
-            line,
-            next.arc_center_incremental,
-            "G91.1 incremental arc-center mode",
-          )
+          if has_arc_center {
+            require_mode(
+              diagnostics,
+              line,
+              next.arc_center_incremental,
+              "G91.1 incremental arc-center mode",
+            )
+          }
         }
         if effective_motion is Some(1) ||
           effective_motion is Some(2) ||
@@ -466,6 +476,7 @@ fn update_modal_state(
     count_address(block, 'Z') > 1 ||
     count_address(block, 'I') > 1 ||
     count_address(block, 'J') > 1 ||
+    count_address(block, 'R') > 1 ||
     count_address(block, 'F') > 1 ||
     count_address(block, 'S') > 1 ||
     count_address(block, 'T') > 1 ||

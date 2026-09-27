@@ -25,14 +25,19 @@ fn validate_profile(profile : MachineProfile) -> Array[Diagnostic] {
 }
 
 ///|
-fn motion_state_ready(state : ModalState, motion : Int) -> Bool {
+fn motion_state_ready(
+  state : ModalState,
+  motion : Int,
+  uses_center_format : Bool,
+) -> Bool {
   let base_ready = state.units_mm is Some(_) &&
     state.absolute is Some(_) &&
     state.work_g54 is Some(true) &&
     state.cutter_comp_off is Some(true) &&
     state.tool_length_comp_off is Some(true)
   let arc_ready = if motion == 2 || motion == 3 {
-    state.plane_xy is Some(true) && state.arc_center_incremental is Some(true)
+    state.plane_xy is Some(true) &&
+    (!uses_center_format || state.arc_center_incremental is Some(true))
   } else {
     true
   }
@@ -127,6 +132,7 @@ pub fn analyze(program : String, profile : MachineProfile) -> AnalysisReport {
         has_word(block, 'Y') ||
         has_word(block, 'Z')
       let has_ij = has_word(block, 'I') || has_word(block, 'J')
+      let has_r = has_word(block, 'R')
       if has_ij && !(state.motion is Some(2)) && !(state.motion is Some(3)) {
         add_diagnostic(
           diagnostics,
@@ -138,12 +144,12 @@ pub fn analyze(program : String, profile : MachineProfile) -> AnalysisReport {
         )
       }
       let is_arc = state.motion is Some(2) || state.motion is Some(3)
-      let has_motion = if is_arc { has_xyz || has_ij } else { has_xyz }
+      let has_motion = if is_arc { has_xyz || has_ij || has_r } else { has_xyz }
       let is_dwell = block_has_code(block, 'G', 4.0)
       if execution_state_known && has_motion && !is_dwell {
         match state.motion {
           Some(motion) if motion >= 0 && motion <= 3 =>
-            if motion_state_ready(state, motion) {
+            if motion_state_ready(state, motion, has_ij) {
               match position {
                 Some(start) =>
                   match endpoint_from_words(start, block, state, profile) {

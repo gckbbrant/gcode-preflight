@@ -129,5 +129,104 @@
     "diagnostics": [
       { "code": "MISSING_FEED", "line": 3 }
     ]
+  },
+  {
+    "id": "r-format-minor-ccw",
+    "program": "fixtures/r-format-minor.nc",
+    "profile": "profiles/r-arcs.json",
+    "status": "Pass",
+    "segment_count": 1,
+    "segment_kinds": ["CounterclockwiseArc"],
+    "distance_mm": 10.471975511965978,
+    "arc_sweeps_radians": [1.0471975511965976],
+    "diagnostics": []
+  },
+  {
+    "id": "r-format-major-helical-ccw",
+    "program": "fixtures/r-format-major-helical.nc",
+    "profile": "profiles/r-arcs.json",
+    "status": "Pass",
+    "segment_count": 1,
+    "segment_kinds": ["CounterclockwiseArc"],
+    "distance_mm": 52.59806819722923,
+    "arc_sweeps_radians": [5.235987755982989],
+    "estimated_time_seconds": 31.55884091833754,
+    "diagnostics": []
+  },
+  {
+    "id": "r-format-inch-units",
+    "program": "fixtures/r-format-inch.nc",
+    "profile": "profiles/r-inch.json",
+    "status": "Pass",
+    "segment_count": 1,
+    "segment_kinds": ["CounterclockwiseArc"],
+    "distance_mm": 13.29940890019679,
+    "arc_sweeps_radians": [1.0471975511965976],
+    "estimated_time_seconds": 3.1415926535897927,
+    "diagnostics": []
+  },
+  {
+    "id": "r-format-interior-overlimit",
+    "program": "fixtures/r-format-interior-overlimit.nc",
+    "profile": "profiles/r-envelope.json",
+    "status": "Fail",
+    "segment_count": 1,
+    "segment_kinds": ["CounterclockwiseArc"],
+    "distance_mm": 52.35987755982989,
+    "arc_sweeps_radians": [5.235987755982989],
+    "diagnostics": [
+      { "code": "TRAVEL_LIMIT_X", "line": 3 }
+    ],
+    "violation_points_mm": [
+      { "x": 25.0, "y": 8.660254037844386, "z": 0.0 }
+    ]
+  },
+  {
+    "id": "r-format-impossible-chord",
+    "program": "fixtures/r-format-invalid-chord.nc",
+    "profile": "profiles/default.json",
+    "status": "Fail",
+    "segment_count": 0,
+    "distance_mm": 0.0,
+    "diagnostics": [
+      { "code": "INVALID_R_ARC", "line": 3 }
+    ]
+  },
+  {
+    "id": "r-format-full-circle-rejected",
+    "program": "fixtures/r-format-full-circle.nc",
+    "profile": "profiles/r-arcs.json",
+    "status": "Fail",
+    "segment_count": 0,
+    "distance_mm": 0.0,
+    "diagnostics": [
+      { "code": "INVALID_R_ARC", "line": 3 }
+    ]
+  },
+  {
+    "id": "r-format-diametric-warning",
+    "program": "fixtures/r-format-diametric.nc",
+    "profile": "profiles/r-arcs.json",
+    "status": "Pass",
+    "segment_count": 1,
+    "segment_kinds": ["CounterclockwiseArc"],
+    "distance_mm": 31.41592653589793,
+    "arc_sweeps_radians": [3.141592653589793],
+    "diagnostics": [
+      { "code": "R_ARC_ROUNDING_SENSITIVE", "line": 3 }
+    ]
+  },
+  {
+    "id": "r-format-near-full-warning",
+    "program": "fixtures/r-format-near-full.nc",
+    "profile": "profiles/r-arcs.json",
+    "status": "Pass",
+    "segment_count": 1,
+    "segment_kinds": ["CounterclockwiseArc"],
+    "distance_mm": 61.959188445798695,
+    "arc_sweeps_radians": [6.19591884457987],
+    "diagnostics": [
+      { "code": "R_ARC_ROUNDING_SENSITIVE", "line": 3 }
+    ]
   }
 ]

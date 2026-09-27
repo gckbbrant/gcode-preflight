@@ -67,6 +67,16 @@ fn block_word(block : GCodeBlock, address : Char) -> Double? {
 }
 
 ///|
+fn block_has_code(block : GCodeBlock, address : Char, code : Double) -> Bool {
+  for word in block.words {
+    if word.address == address && code_is(word.value, code) {
+      return true
+    }
+  }
+  false
+}
+
+///|
 fn count_address(block : GCodeBlock, address : Char) -> Int {
   let mut count = 0
   for word in block.words {
@@ -355,9 +365,13 @@ fn update_modal_state(
       false,
     )
   }
-  let has_axis = block_word(block, 'X') is Some(_) ||
+  let has_xyz = block_word(block, 'X') is Some(_) ||
     block_word(block, 'Y') is Some(_) ||
     block_word(block, 'Z') is Some(_)
+  let has_arc_center = block_word(block, 'I') is Some(_) ||
+    block_word(block, 'J') is Some(_)
+  let has_axis = has_xyz ||
+    ((next.motion is Some(2) || next.motion is Some(3)) && has_arc_center)
   if dwell {
     if motion_code is Some(_) || has_axis {
       mode_diagnostic(
@@ -464,16 +478,4 @@ fn update_modal_state(
     next.ended = true
   }
   next
-}
-
-///|
-fn inspect_modal_program(program : ParsedProgram) -> Array[Diagnostic] {
-  let diagnostics = program.diagnostics.copy()
-  let mut state = default_modal_state()
-  for block in program.blocks {
-    if !state.ended {
-      state = update_modal_state(state, block, diagnostics)
-    }
-  }
-  diagnostics
 }

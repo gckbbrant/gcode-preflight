@@ -1,4 +1,33 @@
 ///|
+fn test_profile_with(
+  initial : Vec3?,
+  offset : Vec3,
+  x_max : Double,
+  y_max : Double,
+) -> MachineProfile {
+  {
+    x: { min: -100.0, max: x_max },
+    y: { min: -100.0, max: y_max },
+    z: { min: -100.0, max: 100.0 },
+    g54_offset_mm: offset,
+    initial_position_g54_mm: initial,
+    rapid_mm_per_min: 3000.0,
+    arc_tolerance_mm: 0.01,
+    tool_change_seconds: Some(15.0),
+  }
+}
+
+///|
+fn test_profile() -> MachineProfile {
+  test_profile_with(
+    Some({ x: 0.0, y: 0.0, z: 0.0 }),
+    { x: 0.0, y: 0.0, z: 0.0 },
+    100.0,
+    100.0,
+  )
+}
+
+///|
 test "lexer accepts compact words and ignores both comment styles" {
   let parsed = parse_program("(job)\nN10G1X1.25Y-2.5F100 (cut) ; tail\n")
   assert_eq(parsed.blocks.length(), 1)
@@ -11,28 +40,27 @@ test "lexer accepts compact words and ignores both comment styles" {
 
 ///|
 test "modal preamble makes a feed move interpretable" {
-  let parsed = parse_program(
+  let report = analyze(
     "G17 G21 G90 G91.1 G94 G54 G40 G49\nG1 X1 Y2 F100\nM2",
+    test_profile(),
   )
-  assert_eq(inspect_modal_program(parsed).length(), 0)
+  assert_eq(report.diagnostics.length(), 0)
 }
 
 ///|
 test "rapid moves do not require arc-center or feed modes" {
-  let diagnostics = inspect_modal_program(
-    parse_program("G21 G90 G54 G40 G49 G0 X1 Y2"),
-  )
-  assert_eq(diagnostics.length(), 0)
+  let report = analyze("G21 G90 G54 G40 G49 G0 X1 Y2", test_profile())
+  assert_eq(report.diagnostics.length(), 0)
 }
 
 ///|
 test "missing setup modes are incomplete" {
-  let diagnostics = inspect_modal_program(parse_program("G1 X1 F100"))
+  let report = analyze("G1 X1 F100", test_profile())
   assert_true(
-    diagnostics.any(d => d.code == "MISSING_MODAL_SETUP" && d.incomplete),
+    report.diagnostics.any(d => d.code == "MISSING_MODAL_SETUP" && d.incomplete),
   )
   assert_true(
-    diagnostics.any(d => {
+    report.diagnostics.any(d => {
       d.code == "MISSING_MODAL_SETUP" && d.message.contains("G54")
     }),
   )
@@ -40,40 +68,149 @@ test "missing setup modes are incomplete" {
 
 ///|
 test "conflicting motion modes are incomplete" {
-  let diagnostics = inspect_modal_program(parse_program("G0 G1 X1"))
+  let report = analyze("G0 G1 X1", test_profile())
   assert_true(
-    diagnostics.any(d => d.code == "CONFLICTING_MODAL_CODES" && d.incomplete),
+    report.diagnostics.any(d => {
+      d.code == "CONFLICTING_MODAL_CODES" && d.incomplete
+    }),
   )
 }
 
 ///|
 test "unknown motion-affecting code is incomplete" {
-  let diagnostics = inspect_modal_program(
-    parse_program("G17 G21 G90 G91.1 G94 G54 G40 G49 G71"),
-  )
+  let report = analyze("G17 G21 G90 G91.1 G94 G54 G40 G49 G71", test_profile())
   assert_true(
-    diagnostics.any(d => d.code == "UNSUPPORTED_G_CODE" && d.incomplete),
+    report.diagnostics.any(d => d.code == "UNSUPPORTED_G_CODE" && d.incomplete),
   )
+  assert_true(report.status == Incomplete)
 }
 
 ///|
 test "feed and spindle omissions are detected as program errors" {
-  let diagnostics = inspect_modal_program(
-    parse_program("G17 G21 G90 G91.1 G94 G54 G40 G49\nG1 X1\nM3"),
+  let report = analyze(
+    "G17 G21 G90 G91.1 G94 G54 G40 G49\nG1 X1\nM3",
+    test_profile(),
   )
-  assert_true(diagnostics.any(d => d.code == "MISSING_FEED" && !d.incomplete))
   assert_true(
-    diagnostics.any(d => d.code == "MISSING_SPINDLE_SPEED" && !d.incomplete),
+    report.diagnostics.any(d => d.code == "MISSING_FEED" && !d.incomplete),
+  )
+  assert_true(
+    report.diagnostics.any(d => {
+      d.code == "MISSING_SPINDLE_SPEED" && !d.incomplete
+    }),
   )
 }
 
 ///|
 test "R arcs and macro expressions are incomplete" {
-  let diagnostics = inspect_modal_program(parse_program("G2 X1 Y0 R1\nG1 X#1"))
+  let report = analyze("G2 X1 Y0 R1\nG1 X#1", test_profile())
   assert_true(
-    diagnostics.any(d => d.code == "R_ARC_UNSUPPORTED" && d.incomplete),
+    report.diagnostics.any(d => d.code == "R_ARC_UNSUPPORTED" && d.incomplete),
   )
   assert_true(
-    diagnostics.any(d => d.code == "MACRO_UNSUPPORTED" && d.incomplete),
+    report.diagnostics.any(d => d.code == "MACRO_UNSUPPORTED" && d.incomplete),
   )
+  assert_true(report.status == Incomplete)
+}
+
+///|
+test "inch coordinates and G54 offset convert to machine millimeters" {
+  let profile = test_profile_with(
+    Some({ x: 0.0, y: 0.0, z: 0.0 }),
+    { x: 5.0, y: 0.0, z: 0.0 },
+    100.0,
+    100.0,
+  )
+  let report = analyze("G20 G90 G54 G40 G49 G0 X1 Y0 Z0", profile)
+  assert_eq(report.segments.length(), 1)
+  assert_true((report.segments[0].start_mm.x - 5.0).abs() < 0.000001)
+  assert_true((report.segments[0].end_mm.x - 30.4).abs() < 0.000001)
+  assert_true((report.distance_mm - 25.4).abs() < 0.000001)
+}
+
+///|
+test "absolute and incremental coordinates share the programmed endpoint" {
+  let report = analyze(
+    "G21 G90 G54 G40 G49 G94\nG0 X10 Y0 Z0\nG91 G1 X2 F120",
+    test_profile(),
+  )
+  assert_eq(report.segments.length(), 2)
+  assert_true((report.segments[0].end_mm.x - 10.0).abs() < 0.000001)
+  assert_true((report.segments[1].end_mm.x - 12.0).abs() < 0.000001)
+  assert_true((report.distance_mm - 12.0).abs() < 0.000001)
+}
+
+///|
+test "clockwise and counterclockwise I/J arcs choose opposite sweeps" {
+  let profile = test_profile_with(
+    Some({ x: 10.0, y: 0.0, z: 0.0 }),
+    { x: 0.0, y: 0.0, z: 0.0 },
+    100.0,
+    100.0,
+  )
+  let setup = "G17 G21 G90 G91.1 G94 G54 G40 G49 F100\n"
+  let cw = analyze(setup + "G2 X0 Y10 I-10 J0", profile)
+  let ccw = analyze(setup + "G3 X0 Y10 I-10 J0", profile)
+  assert_eq(cw.segments.length(), 1)
+  assert_eq(ccw.segments.length(), 1)
+  assert_true(cw.segments[0].sweep_radians < 0.0)
+  assert_true(ccw.segments[0].sweep_radians > 0.0)
+  assert_true((cw.distance_mm - 15.0 * @math.PI).abs() < 0.000001)
+  assert_true((ccw.distance_mm - 5.0 * @math.PI).abs() < 0.000001)
+}
+
+///|
+test "full-circle and helical arcs include circumference and Z travel" {
+  let profile = test_profile_with(
+    Some({ x: 10.0, y: 0.0, z: 0.0 }),
+    { x: 0.0, y: 0.0, z: 0.0 },
+    100.0,
+    100.0,
+  )
+  let setup = "G17 G21 G90 G91.1 G94 G54 G40 G49 F100\n"
+  let full = analyze(setup + "G3 I-10 J0", profile)
+  let helix = analyze(setup + "G3 X10 Y0 Z5 I-10 J0", profile)
+  assert_eq(full.segments.length(), 1)
+  assert_true((full.distance_mm - 20.0 * @math.PI).abs() < 0.000001)
+  assert_true(
+    (helix.distance_mm - (400.0 * @math.PI * @math.PI + 25.0).sqrt()).abs() <
+    0.000001,
+  )
+}
+
+///|
+test "arc cardinal extrema are checked against axis travel" {
+  let profile = test_profile_with(
+    Some({ x: 10.0, y: 0.0, z: 0.0 }),
+    { x: 0.0, y: 0.0, z: 0.0 },
+    100.0,
+    8.0,
+  )
+  let report = analyze(
+    "G17 G21 G90 G91.1 G94 G54 G40 G49 F100\nG3 X0 Y10 I-10 J0", profile,
+  )
+  assert_true(report.diagnostics.any(d => d.code == "TRAVEL_LIMIT_Y"))
+  assert_true(report.status == Fail)
+}
+
+///|
+test "bad radius and missing initial position cannot pass" {
+  let profile = test_profile_with(
+    Some({ x: 10.0, y: 0.0, z: 0.0 }),
+    { x: 0.0, y: 0.0, z: 0.0 },
+    100.0,
+    100.0,
+  )
+  let bad_arc = analyze(
+    "G17 G21 G90 G91.1 G94 G54 G40 G49 F100\nG3 X0 Y9 I-10 J0", profile,
+  )
+  assert_true(bad_arc.diagnostics.any(d => d.code == "INVALID_ARC_RADIUS"))
+  let no_start = analyze(
+    "G21 G90 G54 G40 G49 G0 X1 Y1 Z0",
+    test_profile_with(None, { x: 0.0, y: 0.0, z: 0.0 }, 100.0, 100.0),
+  )
+  assert_true(
+    no_start.diagnostics.any(d => d.code == "UNKNOWN_INITIAL_POSITION"),
+  )
+  assert_true(no_start.status != Pass)
 }

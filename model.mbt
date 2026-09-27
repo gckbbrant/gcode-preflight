@@ -21,6 +21,7 @@ pub(all) struct MachineProfile {
   y : AxisLimit
   z : AxisLimit
   g54_offset_mm : Vec3
+  initial_position_g54_mm : Vec3?
   rapid_mm_per_min : Double
   arc_tolerance_mm : Double
   tool_change_seconds : Double?
@@ -53,8 +54,37 @@ pub(all) enum AnalysisStatus {
 } derive(Eq, ToJson)
 
 ///|
+/// Interpreted motion type.
+pub(all) enum MotionKind {
+  Rapid
+  Linear
+  ClockwiseArc
+  CounterclockwiseArc
+} derive(ToJson)
+
+///|
+/// One validated move in the programmed XY toolpath.
+pub(all) struct ToolPathSegment {
+  line : Int
+  kind : MotionKind
+  start_mm : Vec3
+  end_mm : Vec3
+  center_mm : Vec3?
+  sweep_radians : Double
+  length_mm : Double
+  feed_mm_per_min : Double?
+} derive(ToJson)
+
+///|
 /// Result of analyzing one program against a machine profile.
 pub(all) struct AnalysisReport {
   status : AnalysisStatus
+  analysis_complete : Bool
+  estimate_complete : Bool
   diagnostics : Array[Diagnostic]
+  segments : Array[ToolPathSegment]
+  distance_mm : Double
+  dwell_seconds : Double
+  tool_changes : Int
+  estimated_time_seconds : Double?
 } derive(ToJson)

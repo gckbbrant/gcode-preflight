@@ -24,3 +24,7 @@ keywords = [ "gcode", "cnc", "preflight", "moonbit" ]
 preferred_target = "native"
 
 description = "Static preflight checks and XY toolpath previews for a supported three-axis CNC G-code subset."
+
+import {
+  "moonbitlang/async@0.20.2",
+}

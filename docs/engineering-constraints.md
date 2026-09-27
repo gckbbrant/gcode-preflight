@@ -14,8 +14,9 @@ Examples that require `INCOMPLETE` include:
 - G18/G19, G41/G42, G43, G52/G92, and other unsupported coordinate or tool
   transformations;
 - an unknown G/M code that may affect execution state;
-- a motion block before required plane, units, distance, arc-center, feed-mode,
-  and work-coordinate modes are established;
+- a motion block before required units, distance, work-coordinate, and
+  compensation-cancel modes are established; arcs additionally require G17 and
+  G91.1, and feed moves require G94;
 - a feed move without a valid modal feed rate, or a time-affecting tool change
   when the profile has no tool-change duration (the latter makes the time
   estimate incomplete; geometric analysis can still be complete).

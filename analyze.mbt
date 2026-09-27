@@ -1,4 +1,37 @@
 ///|
+fn additional_work_offsets_invalid(profile : MachineProfile) -> Bool {
+  match profile.additional_work_offsets_mm {
+    Some(offsets) => {
+      let mut invalid = false
+      for i in 0..<offsets.length() {
+        let system = offsets[i].system
+        if !(system == "G55" ||
+          system == "G56" ||
+          system == "G57" ||
+          system == "G58" ||
+          system == "G59" ||
+          system == "G59.1" ||
+          system == "G59.2" ||
+          system == "G59.3") {
+          invalid = true
+        }
+        match offsets[i].rotation_deg {
+          Some(rotation) if rotation.abs() > 0.000000001 => invalid = true
+          _ => ()
+        }
+        for j in 0..<i {
+          if offsets[j].system == system {
+            invalid = true
+          }
+        }
+      }
+      invalid
+    }
+    None => false
+  }
+}
+
+///|
 fn validate_profile(profile : MachineProfile) -> Array[Diagnostic] {
   let diagnostics : Array[Diagnostic] = []
   let tool_change_invalid = match profile.tool_change_seconds {
@@ -10,11 +43,12 @@ fn validate_profile(profile : MachineProfile) -> Array[Diagnostic] {
     profile.z.min >= profile.z.max ||
     profile.rapid_mm_per_min <= 0.0 ||
     profile.arc_tolerance_mm <= 0.0 ||
-    tool_change_invalid
+    tool_change_invalid ||
+    additional_work_offsets_invalid(profile)
   if invalid {
     diagnostics.push({
       code: "INVALID_PROFILE",
-      message: "Axis limits must have positive range; rapid speed and arc tolerance must be positive; tool-change time cannot be negative.",
+      message: "Axis limits must have positive range; rapid speed and arc tolerance must be positive; tool-change time cannot be negative; additional work offsets must use unique G55-G59.3 names with no nonzero rotation.",
       line: None,
       severity: Error,
       incomplete: true,
@@ -29,10 +63,11 @@ fn motion_state_ready(
   state : ModalState,
   motion : Int,
   uses_center_format : Bool,
+  machine_coordinates : Bool,
 ) -> Bool {
   let base_ready = state.units_mm is Some(_) &&
-    state.absolute is Some(_) &&
-    state.work_g54 is Some(true) &&
+    (machine_coordinates || state.absolute is Some(_)) &&
+    (machine_coordinates || state.work_coordinate is Some(_)) &&
     state.cutter_comp_off is Some(true) &&
     state.tool_length_comp_off is Some(true)
   let arc_ready = if motion == 2 || motion == 3 {
@@ -55,6 +90,7 @@ fn update_position_after_unknown_start(
   block : GCodeBlock,
   state : ModalState,
   profile : MachineProfile,
+  machine_coordinates : Bool,
   already_reported : Bool,
 ) -> (Vec3?, Bool) {
   if !already_reported {
@@ -67,7 +103,10 @@ fn update_position_after_unknown_start(
       true,
     )
   }
-  (point_from_full_absolute_words(block, state, profile), true)
+  (
+    point_from_full_absolute_words(block, state, profile, machine_coordinates),
+    true,
+  )
 }
 
 ///|
@@ -103,7 +142,8 @@ pub fn analyze(program : String, profile : MachineProfile) -> AnalysisReport {
     profile.y.min >= profile.y.max ||
     profile.z.min >= profile.z.max ||
     profile.rapid_mm_per_min <= 0.0 ||
-    profile.arc_tolerance_mm <= 0.0 {
+    profile.arc_tolerance_mm <= 0.0 ||
+    additional_work_offsets_invalid(profile) {
     execution_state_known = false
   }
   for block in parsed.blocks {
@@ -133,6 +173,11 @@ pub fn analyze(program : String, profile : MachineProfile) -> AnalysisReport {
         has_word(block, 'Z')
       let has_ij = has_word(block, 'I') || has_word(block, 'J')
       let has_r = has_word(block, 'R')
+      let machine_coordinates = block_has_code(block, 'G', 53.0)
+      let g53_motion_valid = state.motion is Some(0) || state.motion is Some(1)
+      if machine_coordinates && has_xyz && !g53_motion_valid {
+        execution_state_known = false
+      }
       if has_ij && !(state.motion is Some(2)) && !(state.motion is Some(3)) {
         add_diagnostic(
           diagnostics,
@@ -146,13 +191,32 @@ pub fn analyze(program : String, profile : MachineProfile) -> AnalysisReport {
       let is_arc = state.motion is Some(2) || state.motion is Some(3)
       let has_motion = if is_arc { has_xyz || has_ij || has_r } else { has_xyz }
       let is_dwell = block_has_code(block, 'G', 4.0)
+      if execution_state_known &&
+        has_motion &&
+        !is_dwell &&
+        !machine_coordinates &&
+        state.work_coordinate is Some(_) &&
+        selected_work_offset(profile, state) is None {
+        add_diagnostic(
+          diagnostics,
+          block.line,
+          "MISSING_WORK_OFFSET",
+          "The selected work coordinate system has no XYZ offset in the machine profile.",
+          Warning,
+          true,
+        )
+        execution_state_known = false
+      }
       if execution_state_known && has_motion && !is_dwell {
         match state.motion {
           Some(motion) if motion >= 0 && motion <= 3 =>
-            if motion_state_ready(state, motion, has_ij) {
+            if motion_state_ready(state, motion, has_ij, machine_coordinates) {
               match position {
                 Some(start) =>
-                  match endpoint_from_words(start, block, state, profile) {
+                  match
+                    endpoint_from_words(
+                      start, block, state, profile, machine_coordinates,
+                    ) {
                     Some(end) => {
                       check_point(diagnostics, block.line, start, profile)
                       check_point(diagnostics, block.line, end, profile)
@@ -214,7 +278,7 @@ pub fn analyze(program : String, profile : MachineProfile) -> AnalysisReport {
                   }
                 None => {
                   let (next_position, reported) = update_position_after_unknown_start(
-                    diagnostics, block, state, profile, unknown_start_reported,
+                    diagnostics, block, state, profile, machine_coordinates, unknown_start_reported,
                   )
                   unknown_start_reported = reported
                   position = next_position

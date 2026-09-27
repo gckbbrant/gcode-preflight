@@ -10,6 +10,7 @@ fn test_profile_with(
     y: { min: -100.0, max: y_max, },
     z: { min: -100.0, max: 100.0, },
     g54_offset_mm: offset,
+    additional_work_offsets_mm: None,
     initial_position_g54_mm: initial,
     rapid_mm_per_min: 3000.0,
     arc_tolerance_mm: 0.01,
@@ -123,6 +124,184 @@ test "inch coordinates and G54 offset convert to machine millimeters" {
   assert_true((report.segments[0].start_mm.x - 5.0).abs() < 0.000001)
   assert_true((report.segments[0].end_mm.x - 30.4).abs() < 0.000001)
   assert_true((report.distance_mm - 25.4).abs() < 0.000001)
+}
+
+///|
+test "all additional work offsets select the matching machine origin" {
+  let offsets : Array[WorkCoordinateOffset] = [
+    {
+      system: "G55",
+      offset_mm: { x: 10.0, y: 0.0, z: 0.0, },
+      rotation_deg: None,
+    },
+    {
+      system: "G56",
+      offset_mm: { x: 20.0, y: 0.0, z: 0.0, },
+      rotation_deg: None,
+    },
+    {
+      system: "G57",
+      offset_mm: { x: 30.0, y: 0.0, z: 0.0, },
+      rotation_deg: None,
+    },
+    {
+      system: "G58",
+      offset_mm: { x: 40.0, y: 0.0, z: 0.0, },
+      rotation_deg: None,
+    },
+    {
+      system: "G59",
+      offset_mm: { x: 50.0, y: 0.0, z: 0.0, },
+      rotation_deg: None,
+    },
+    {
+      system: "G59.1",
+      offset_mm: { x: 60.0, y: 0.0, z: 0.0, },
+      rotation_deg: None,
+    },
+    {
+      system: "G59.2",
+      offset_mm: { x: 70.0, y: 0.0, z: 0.0, },
+      rotation_deg: None,
+    },
+    {
+      system: "G59.3",
+      offset_mm: { x: 80.0, y: 0.0, z: 0.0, },
+      rotation_deg: None,
+    },
+  ]
+  let profile = { ..test_profile(), additional_work_offsets_mm: Some(offsets), }
+  let report = analyze(
+    "G21 G90 G40 G49 G54 G0\nG55 X0 Y0 Z0\nG56 X0 Y0 Z0\nG57 X0 Y0 Z0\nG58 X0 Y0 Z0\nG59 X0 Y0 Z0\nG59.1 X0 Y0 Z0\nG59.2 X0 Y0 Z0\nG59.3 X0 Y0 Z0\nG54 X0 Y0 Z0",
+    profile,
+  )
+  assert_true(report.status is Pass)
+  assert_eq(report.segments.length(), 9)
+  assert_true((report.distance_mm - 160.0).abs() < 0.000001)
+  for i in 0..<8 {
+    assert_true(
+      (report.segments[i].end_mm.x - (i + 1).to_double() * 10.0).abs() <
+      0.000001,
+    )
+  }
+  assert_true(report.segments[8].end_mm.x == 0.0)
+}
+
+///|
+test "absolute I/J arc centers use the selected work coordinate offset" {
+  let profile = {
+    ..test_profile_with(
+      Some({ x: 20.0, y: 20.0, z: 0.0, }),
+      { x: 0.0, y: 0.0, z: 0.0, },
+      100.0,
+      100.0,
+    ),
+    additional_work_offsets_mm: Some([
+      {
+        system: "G55",
+        offset_mm: { x: 10.0, y: 20.0, z: 0.0, },
+        rotation_deg: None,
+      },
+    ]),
+  }
+  let report = analyze(
+    "G17 G21 G90 G90.1 G40 G49 G55 G94 F100\nG3 X0 Y10 I0 J0", profile,
+  )
+  assert_true(report.status is Pass)
+  assert_true((report.segments[0].center_mm.unwrap().x - 10.0).abs() < 0.000001)
+  assert_true((report.segments[0].center_mm.unwrap().y - 20.0).abs() < 0.000001)
+  assert_true((report.distance_mm - 5.0 * @math.PI).abs() < 0.000001)
+}
+
+///|
+test "unconfigured or conflicting work coordinate systems cannot pass" {
+  let no_offset = analyze("G21 G90 G55 G40 G49 G0 X1 Y0 Z0", test_profile())
+  assert_true(no_offset.status is Incomplete)
+  assert_true(no_offset.diagnostics.any(d => d.code == "MISSING_WORK_OFFSET"))
+  let conflicting = analyze("G21 G90 G54 G55 G0 X1 Y0 Z0", test_profile())
+  assert_true(conflicting.status is Incomplete)
+  assert_true(
+    conflicting.diagnostics.any(d => d.code == "CONFLICTING_MODAL_CODES"),
+  )
+  let duplicate_profile = {
+    ..test_profile(),
+    additional_work_offsets_mm: Some([
+      {
+        system: "G55",
+        offset_mm: { x: 1.0, y: 0.0, z: 0.0, },
+        rotation_deg: None,
+      },
+      {
+        system: "G55",
+        offset_mm: { x: 2.0, y: 0.0, z: 0.0, },
+        rotation_deg: None,
+      },
+    ]),
+  }
+  let invalid_profile = analyze(
+    "G21 G90 G55 G40 G49 G0 X1 Y0 Z0", duplicate_profile,
+  )
+  assert_true(invalid_profile.status is Incomplete)
+  assert_eq(invalid_profile.segments.length(), 0)
+  assert_true(invalid_profile.diagnostics.any(d => d.code == "INVALID_PROFILE"))
+  let rotated_profile = {
+    ..test_profile(),
+    additional_work_offsets_mm: Some([
+      {
+        system: "G55",
+        offset_mm: { x: 0.0, y: 0.0, z: 0.0, },
+        rotation_deg: Some(15.0),
+      },
+    ]),
+  }
+  let rotated = analyze("G21 G90 G55 G40 G49 G0 X1 Y0 Z0", rotated_profile)
+  assert_true(rotated.status is Incomplete)
+  assert_eq(rotated.segments.length(), 0)
+  assert_true(rotated.diagnostics.any(d => d.code == "INVALID_PROFILE"))
+}
+
+///|
+test "G53 uses absolute machine coordinates for one block only" {
+  let profile = test_profile_with(
+    Some({ x: 5.0, y: 5.0, z: 0.0, }),
+    { x: 10.0, y: 20.0, z: 0.0, },
+    100.0,
+    100.0,
+  )
+  let report = analyze(
+    "G21 G91 G40 G49 G0\nG53 X0 Y0 Z0\nG90 G54 X5 Y5 Z0", profile,
+  )
+  assert_true(report.status is Pass)
+  assert_eq(report.segments.length(), 2)
+  assert_true(report.segments[0].end_mm.x == 0.0)
+  assert_true(report.segments[0].end_mm.y == 0.0)
+  assert_true((report.segments[1].end_mm.x - 15.0).abs() < 0.000001)
+  assert_true((report.segments[1].end_mm.y - 25.0).abs() < 0.000001)
+  assert_true((report.distance_mm - 2.0 * 850.0.sqrt()).abs() < 0.000001)
+}
+
+///|
+test "G53 cannot be modal, arc-based, or interpreted without linear motion" {
+  let profile = test_profile()
+  let bad_arc = analyze(
+    "G17 G21 G90 G91.1 G54 G40 G49 G2 F100\nG53 X1 Y1 I0 J1", profile,
+  )
+  assert_true(bad_arc.status is Fail)
+  assert_true(
+    bad_arc.diagnostics.any(d => d.code == "G53_REQUIRES_LINEAR_MOTION"),
+  )
+  let no_motion_mode = analyze("G21 G40 G49 G53 X1 Y2 Z3", profile)
+  assert_true(no_motion_mode.status is Fail)
+  assert_true(
+    no_motion_mode.diagnostics.any(d => d.code == "G53_REQUIRES_LINEAR_MOTION"),
+  )
+  let missing_units = analyze("G40 G49 G0 G53 X1 Y2 Z3", profile)
+  assert_true(missing_units.status is Incomplete)
+  assert_true(
+    missing_units.diagnostics.any(d => {
+      d.code == "MISSING_MODAL_SETUP" && d.message.contains("G20 or G21")
+    }),
+  )
 }
 
 ///|

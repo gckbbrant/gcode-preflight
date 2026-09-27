@@ -13,21 +13,70 @@ fn units_factor(state : ModalState) -> Double? {
 }
 
 ///|
+fn work_offset_for_system(profile : MachineProfile, system : Int) -> Vec3? {
+  if system == 1 {
+    return Some(profile.g54_offset_mm)
+  }
+  let system_name = match system {
+    2 => "G55"
+    3 => "G56"
+    4 => "G57"
+    5 => "G58"
+    6 => "G59"
+    7 => "G59.1"
+    8 => "G59.2"
+    9 => "G59.3"
+    _ => return None
+  }
+  match profile.additional_work_offsets_mm {
+    Some(offsets) => {
+      for entry in offsets {
+        if entry.system == system_name {
+          return Some(entry.offset_mm)
+        }
+      }
+      None
+    }
+    None => None
+  }
+}
+
+///|
+fn selected_work_offset(profile : MachineProfile, state : ModalState) -> Vec3? {
+  match state.work_coordinate {
+    Some(system) => work_offset_for_system(profile, system)
+    None => None
+  }
+}
+
+///|
 fn endpoint_from_words(
   start : Vec3,
   block : GCodeBlock,
   state : ModalState,
   profile : MachineProfile,
+  machine_coordinates : Bool,
 ) -> Vec3? {
   let factor = match units_factor(state) {
     Some(factor) => factor
     None => return None
   }
-  let absolute = match state.absolute {
-    Some(absolute) => absolute
-    None => return None
+  let absolute = if machine_coordinates {
+    true
+  } else {
+    match state.absolute {
+      Some(absolute) => absolute
+      None => return None
+    }
   }
-  let offset = profile.g54_offset_mm
+  let offset : Vec3 = if machine_coordinates {
+    { x: 0.0, y: 0.0, z: 0.0, }
+  } else {
+    match selected_work_offset(profile, state) {
+      Some(offset) => offset
+      None => return None
+    }
+  }
   let x = match block_word(block, 'X') {
     Some(value) =>
       if absolute {
@@ -63,21 +112,30 @@ fn point_from_full_absolute_words(
   block : GCodeBlock,
   state : ModalState,
   profile : MachineProfile,
+  machine_coordinates : Bool,
 ) -> Vec3? {
   if !(has_word(block, 'X') && has_word(block, 'Y') && has_word(block, 'Z')) {
     return None
   }
-  if !(state.absolute is Some(true)) {
+  if !machine_coordinates && !(state.absolute is Some(true)) {
     return None
   }
   let factor = match units_factor(state) {
     Some(factor) => factor
     None => return None
   }
+  let offset : Vec3 = if machine_coordinates {
+    { x: 0.0, y: 0.0, z: 0.0, }
+  } else {
+    match selected_work_offset(profile, state) {
+      Some(offset) => offset
+      None => return None
+    }
+  }
   Some({
-    x: block_word(block, 'X').unwrap() * factor + profile.g54_offset_mm.x,
-    y: block_word(block, 'Y').unwrap() * factor + profile.g54_offset_mm.y,
-    z: block_word(block, 'Z').unwrap() * factor + profile.g54_offset_mm.z,
+    x: block_word(block, 'X').unwrap() * factor + offset.x,
+    y: block_word(block, 'Y').unwrap() * factor + offset.y,
+    z: block_word(block, 'Z').unwrap() * factor + offset.z,
   })
 }
 
@@ -270,11 +328,8 @@ fn arc_geometry(
     None => 0.0
   }
   let center : Vec3 = if absolute_center {
-    {
-      x: i + profile.g54_offset_mm.x,
-      y: j + profile.g54_offset_mm.y,
-      z: start.z,
-    }
+    let offset = selected_work_offset(profile, state).unwrap()
+    { x: i + offset.x, y: j + offset.y, z: start.z, }
   } else {
     { x: start.x + i, y: start.y + j, z: start.z, }
   }

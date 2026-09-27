@@ -69,6 +69,7 @@ pub(all) struct MachineProfile {
   y : AxisLimit
   z : AxisLimit
   g54_offset_mm : Vec3
+  additional_work_offsets_mm : Array[WorkCoordinateOffset]?
   initial_position_g54_mm : Vec3?
   rapid_mm_per_min : Double
   arc_tolerance_mm : Double
@@ -113,6 +114,14 @@ pub fn Vec3::equal(Self, Self) -> Bool
 pub fn Vec3::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
 pub fn Vec3::not_equal(Self, Self) -> Bool
 pub fn Vec3::to_json(Self) -> Json
+
+pub(all) struct WorkCoordinateOffset {
+  system : String
+  offset_mm : Vec3
+  rotation_deg : Double?
+} derive(ToJson, @json.FromJson)
+pub fn WorkCoordinateOffset::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn WorkCoordinateOffset::to_json(Self) -> Json
 
 // Type aliases
 

@@ -77,6 +77,27 @@ def compare_case(case: dict, output_dir: Path) -> None:
                 f"{case['id']}: expected segment kinds "
                 f"{case['segment_kinds']}, got {actual}"
             )
+    for field, coordinate in (
+        ("segment_starts_mm", "start_mm"),
+        ("segment_endpoints_mm", "end_mm"),
+    ):
+        if field in case:
+            expected_points = case[field]
+            if len(expected_points) != len(report["segments"]):
+                raise AssertionError(
+                    f"{case['id']}: expected {len(expected_points)} {field}, "
+                    f"got {len(report['segments'])} segments"
+                )
+            for index, (expected_point, segment) in enumerate(
+                zip(expected_points, report["segments"])
+            ):
+                actual_point = segment[coordinate]
+                for axis in ("x", "y", "z"):
+                    close(
+                        actual_point[axis],
+                        expected_point[axis],
+                        f"{case['id']} {field} {index}:{axis}",
+                    )
     if "arc_sweeps_radians" in case:
         actual = [
             segment["sweep_radians"]

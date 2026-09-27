@@ -1,0 +1,11 @@
+(Reference cases: LinuxCNC G54-G59.3, changing the active work origin.)
+G21 G90 G40 G49 G54 G0
+G55 X0 Y0 Z0
+G56 X0 Y0 Z0
+G57 X0 Y0 Z0
+G58 X0 Y0 Z0
+G59 X0 Y0 Z0
+G59.1 X0 Y0 Z0
+G59.2 X0 Y0 Z0
+G59.3 X0 Y0 Z0
+G54 X0 Y0 Z0

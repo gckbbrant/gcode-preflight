@@ -20,6 +20,16 @@ interior travel violations, impossible chords, and rejection of R full circles.
 The diametric arc fixture also confirms the rounding-sensitivity warning does
 not change a valid program's PASS status.
 
+The coordinate-system fixtures adapt the official LinuxCNC definitions for
+G54-G59.3 and non-modal G53 moves. They check every work-system selector,
+machine-space segment start/end coordinates, an offset-free G53 block under
+G91, restoration of the active work offset on the next block, and incomplete
+or failing results for missing offsets and G53 arcs
+([G-code reference](https://linuxcnc.org/docs/html/gcode/g-code.html),
+[coordinate systems](https://linuxcnc.org/docs/html/gcode/coordinates.html)).
+These are source-grounded expected-value comparisons; the CI runner does not
+launch a LinuxCNC interpreter.
+
 The corpus stays within the project's explicitly supported subset. It records
 expected behavior; it is not a general certification of arbitrary controller
 dialects.

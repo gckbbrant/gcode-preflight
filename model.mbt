@@ -14,6 +14,15 @@ pub(all) struct Vec3 {
 } derive(Eq, ToJson, FromJson)
 
 ///|
+/// Translation for an additional work coordinate system. The supported
+/// coordinate systems are G55 through G59.3 and rotations are not modeled.
+pub(all) struct WorkCoordinateOffset {
+  system : String
+  offset_mm : Vec3
+  rotation_deg : Double?
+} derive(ToJson, FromJson)
+
+///|
 /// Configured machine travel in millimeters.
 pub(all) struct TravelLimits {
   x : AxisLimit
@@ -29,6 +38,7 @@ pub(all) struct MachineProfile {
   y : AxisLimit
   z : AxisLimit
   g54_offset_mm : Vec3
+  additional_work_offsets_mm : Array[WorkCoordinateOffset]?
   initial_position_g54_mm : Vec3?
   rapid_mm_per_min : Double
   arc_tolerance_mm : Double
@@ -116,6 +126,12 @@ pub extend Vec3 with ToJson::{to_json}
 
 ///|
 pub extend Vec3 with @json.FromJson::{from_json}
+
+///|
+pub extend WorkCoordinateOffset with ToJson::{to_json}
+
+///|
+pub extend WorkCoordinateOffset with @json.FromJson::{from_json}
 
 ///|
 pub extend TravelLimits with ToJson::{to_json}

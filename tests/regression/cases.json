@@ -239,5 +239,79 @@
     "distance_mm": 15.707963267948966,
     "arc_sweeps_radians": [1.5707963267948966],
     "diagnostics": []
+  },
+  {
+    "id": "linuxcnc-work-coordinate-systems",
+    "program": "fixtures/linuxcnc-work-offsets.nc",
+    "profile": "profiles/work-offsets.json",
+    "status": "Pass",
+    "segment_count": 9,
+    "segment_kinds": ["Rapid", "Rapid", "Rapid", "Rapid", "Rapid", "Rapid", "Rapid", "Rapid", "Rapid"],
+    "distance_mm": 160.0,
+    "estimated_time_seconds": 9.6,
+    "segment_starts_mm": [
+      { "x": 0.0, "y": 0.0, "z": 0.0 },
+      { "x": 10.0, "y": 0.0, "z": 0.0 },
+      { "x": 20.0, "y": 0.0, "z": 0.0 },
+      { "x": 30.0, "y": 0.0, "z": 0.0 },
+      { "x": 40.0, "y": 0.0, "z": 0.0 },
+      { "x": 50.0, "y": 0.0, "z": 0.0 },
+      { "x": 60.0, "y": 0.0, "z": 0.0 },
+      { "x": 70.0, "y": 0.0, "z": 0.0 },
+      { "x": 80.0, "y": 0.0, "z": 0.0 }
+    ],
+    "segment_endpoints_mm": [
+      { "x": 10.0, "y": 0.0, "z": 0.0 },
+      { "x": 20.0, "y": 0.0, "z": 0.0 },
+      { "x": 30.0, "y": 0.0, "z": 0.0 },
+      { "x": 40.0, "y": 0.0, "z": 0.0 },
+      { "x": 50.0, "y": 0.0, "z": 0.0 },
+      { "x": 60.0, "y": 0.0, "z": 0.0 },
+      { "x": 70.0, "y": 0.0, "z": 0.0 },
+      { "x": 80.0, "y": 0.0, "z": 0.0 },
+      { "x": 0.0, "y": 0.0, "z": 0.0 }
+    ],
+    "diagnostics": []
+  },
+  {
+    "id": "linuxcnc-g53-machine-coordinate-one-shot",
+    "program": "fixtures/linuxcnc-g53-machine-coordinate.nc",
+    "profile": "profiles/g53-machine-coordinate.json",
+    "status": "Pass",
+    "segment_count": 2,
+    "segment_kinds": ["Rapid", "Rapid"],
+    "distance_mm": 58.309518948453,
+    "estimated_time_seconds": 3.49857113690718,
+    "segment_starts_mm": [
+      { "x": 15.0, "y": 25.0, "z": 0.0 },
+      { "x": 0.0, "y": 0.0, "z": 0.0 }
+    ],
+    "segment_endpoints_mm": [
+      { "x": 0.0, "y": 0.0, "z": 0.0 },
+      { "x": 15.0, "y": 25.0, "z": 0.0 }
+    ],
+    "diagnostics": []
+  },
+  {
+    "id": "missing-configured-work-offset",
+    "program": "fixtures/missing-work-offset.nc",
+    "profile": "profiles/default.json",
+    "status": "Incomplete",
+    "segment_count": 0,
+    "distance_mm": 0.0,
+    "diagnostics": [
+      { "code": "MISSING_WORK_OFFSET", "line": 2 }
+    ]
+  },
+  {
+    "id": "g53-arc-is-a-program-error",
+    "program": "fixtures/g53-arc-rejected.nc",
+    "profile": "profiles/default.json",
+    "status": "Fail",
+    "segment_count": 0,
+    "distance_mm": 0.0,
+    "diagnostics": [
+      { "code": "G53_REQUIRES_LINEAR_MOTION", "line": 2 }
+    ]
   }
 ]

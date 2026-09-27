@@ -5,7 +5,7 @@ priv struct ModalState {
   mut absolute : Bool?
   mut arc_center_incremental : Bool?
   mut feed_per_minute : Bool?
-  mut work_g54 : Bool?
+  mut work_coordinate : Int?
   mut cutter_comp_off : Bool?
   mut tool_length_comp_off : Bool?
   mut motion : Int?
@@ -23,7 +23,7 @@ fn default_modal_state() -> ModalState {
     absolute: None,
     arc_center_incremental: None,
     feed_per_minute: None,
-    work_g54: None,
+    work_coordinate: None,
     cutter_comp_off: None,
     tool_length_comp_off: None,
     motion: None,
@@ -101,6 +101,15 @@ fn recognized_g_code(value : Double) -> Bool {
   code_is(value, 40.0) ||
   code_is(value, 49.0) ||
   code_is(value, 54.0) ||
+  code_is(value, 55.0) ||
+  code_is(value, 56.0) ||
+  code_is(value, 57.0) ||
+  code_is(value, 58.0) ||
+  code_is(value, 59.0) ||
+  code_is(value, 59.1) ||
+  code_is(value, 59.2) ||
+  code_is(value, 59.3) ||
+  code_is(value, 53.0) ||
   code_is(value, 90.0) ||
   code_is(value, 91.0) ||
   code_is(value, 90.1) ||
@@ -152,7 +161,9 @@ fn update_modal_state(
   let mut g21 = false
   let mut g40 = false
   let mut g49 = false
-  let mut g54 = false
+  let mut work_coordinate_code : Int? = None
+  let mut work_coordinate_code_count = 0
+  let mut g53 = false
   let mut g90 = false
   let mut g91 = false
   let mut g90_1 = false
@@ -197,8 +208,35 @@ fn update_modal_state(
         g40 = true
       } else if code_is(word.value, 49.0) {
         g49 = true
+      } else if code_is(word.value, 53.0) {
+        g53 = true
       } else if code_is(word.value, 54.0) {
-        g54 = true
+        work_coordinate_code_count += 1
+        work_coordinate_code = Some(1)
+      } else if code_is(word.value, 55.0) {
+        work_coordinate_code_count += 1
+        work_coordinate_code = Some(2)
+      } else if code_is(word.value, 56.0) {
+        work_coordinate_code_count += 1
+        work_coordinate_code = Some(3)
+      } else if code_is(word.value, 57.0) {
+        work_coordinate_code_count += 1
+        work_coordinate_code = Some(4)
+      } else if code_is(word.value, 58.0) {
+        work_coordinate_code_count += 1
+        work_coordinate_code = Some(5)
+      } else if code_is(word.value, 59.0) {
+        work_coordinate_code_count += 1
+        work_coordinate_code = Some(6)
+      } else if code_is(word.value, 59.1) {
+        work_coordinate_code_count += 1
+        work_coordinate_code = Some(7)
+      } else if code_is(word.value, 59.2) {
+        work_coordinate_code_count += 1
+        work_coordinate_code = Some(8)
+      } else if code_is(word.value, 59.3) {
+        work_coordinate_code_count += 1
+        work_coordinate_code = Some(9)
       } else if code_is(word.value, 90.0) {
         g90 = true
       } else if code_is(word.value, 91.0) {
@@ -275,6 +313,7 @@ fn update_modal_state(
   if (g20 && g21) ||
     (g90 && g91) ||
     (g90_1 && g91_1) ||
+    work_coordinate_code_count > 1 ||
     motion_code_count > 1 ||
     (dwell && motion_code_count > 0) ||
     (m3 && m4) ||
@@ -308,8 +347,9 @@ fn update_modal_state(
   if g94 {
     next.feed_per_minute = Some(true)
   }
-  if g54 {
-    next.work_g54 = Some(true)
+  match work_coordinate_code {
+    Some(system) => next.work_coordinate = Some(system)
+    None => ()
   }
   if g40 {
     next.cutter_comp_off = Some(true)
@@ -415,67 +455,77 @@ fn update_modal_state(
     )
   }
   if has_axis {
-    match effective_motion {
-      Some(0) | Some(1) | Some(2) | Some(3) => {
-        require_mode(diagnostics, line, next.units_mm, "G20 or G21 units")
-        require_mode(
-          diagnostics,
-          line,
-          next.absolute,
-          "G90 or G91 distance mode",
-        )
-        require_mode(
-          diagnostics,
-          line,
-          next.work_g54,
-          "G54 work coordinate system",
-        )
-        require_mode(
-          diagnostics,
-          line,
-          next.cutter_comp_off,
-          "G40 cutter compensation cancel",
-        )
-        require_mode(
-          diagnostics,
-          line,
-          next.tool_length_comp_off,
-          "G49 tool-length compensation cancel",
-        )
-        if effective_motion is Some(2) || effective_motion is Some(3) {
-          require_mode(diagnostics, line, next.plane_xy, "G17 XY plane")
-          if has_arc_center {
+    if g53 && !(effective_motion is Some(0) || effective_motion is Some(1)) {
+      mode_diagnostic(
+        diagnostics, line, "G53_REQUIRES_LINEAR_MOTION", "G53 requires G0 or G1 motion, either on this block or already modal.",
+        false,
+      )
+    } else {
+      match effective_motion {
+        Some(0) | Some(1) | Some(2) | Some(3) => {
+          require_mode(diagnostics, line, next.units_mm, "G20 or G21 units")
+          if !g53 {
             require_mode(
               diagnostics,
               line,
-              next.arc_center_incremental,
-              "G90.1 or G91.1 arc-center mode",
+              next.absolute,
+              "G90 or G91 distance mode",
             )
+            if next.work_coordinate is None {
+              mode_diagnostic(
+                diagnostics, line, "MISSING_MODAL_SETUP", "Motion requires an explicit G54 through G59.3 work coordinate system.",
+                true,
+              )
+            }
           }
-        }
-        if effective_motion is Some(1) ||
-          effective_motion is Some(2) ||
-          effective_motion is Some(3) {
           require_mode(
             diagnostics,
             line,
-            next.feed_per_minute,
-            "G94 feed-per-minute mode",
+            next.cutter_comp_off,
+            "G40 cutter compensation cancel",
           )
-          if next.feed_mm_per_min is None {
-            mode_diagnostic(
-              diagnostics, line, "MISSING_FEED", "G1/G2/G3 motion requires a modal feed rate F.",
-              false,
+          require_mode(
+            diagnostics,
+            line,
+            next.tool_length_comp_off,
+            "G49 tool-length compensation cancel",
+          )
+          if !g53 &&
+            (effective_motion is Some(2) || effective_motion is Some(3)) {
+            require_mode(diagnostics, line, next.plane_xy, "G17 XY plane")
+            if has_arc_center {
+              require_mode(
+                diagnostics,
+                line,
+                next.arc_center_incremental,
+                "G90.1 or G91.1 arc-center mode",
+              )
+            }
+          }
+          if effective_motion is Some(1) ||
+            effective_motion is Some(2) ||
+            effective_motion is Some(3) {
+            require_mode(
+              diagnostics,
+              line,
+              next.feed_per_minute,
+              "G94 feed-per-minute mode",
             )
+            if next.feed_mm_per_min is None {
+              mode_diagnostic(
+                diagnostics, line, "MISSING_FEED", "G1/G2/G3 motion requires a modal feed rate F.",
+                false,
+              )
+            }
           }
         }
+        None =>
+          mode_diagnostic(
+            diagnostics, line, "MISSING_MOTION_MODE", "Axis words require an explicit G0/G1/G2/G3 motion mode.",
+            true,
+          )
+        _ => ()
       }
-      None =>
-        mode_diagnostic(
-          diagnostics, line, "MISSING_MOTION_MODE", "Axis words require an explicit G0/G1/G2/G3 motion mode.",
-          true,
-        )
-      _ => ()
     }
   }
   if count_address(block, 'N') > 1 ||

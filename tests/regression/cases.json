@@ -228,5 +228,16 @@
     "diagnostics": [
       { "code": "R_ARC_ROUNDING_SENSITIVE", "line": 3 }
     ]
+  },
+  {
+    "id": "g90-1-absolute-center-g54-offset",
+    "program": "fixtures/g90-1-absolute-center.nc",
+    "profile": "profiles/g90-1-offset.json",
+    "status": "Pass",
+    "segment_count": 1,
+    "segment_kinds": ["CounterclockwiseArc"],
+    "distance_mm": 15.707963267948966,
+    "arc_sweeps_radians": [1.5707963267948966],
+    "diagnostics": []
   }
 ]

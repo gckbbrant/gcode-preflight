@@ -103,6 +103,7 @@ fn recognized_g_code(value : Double) -> Bool {
   code_is(value, 54.0) ||
   code_is(value, 90.0) ||
   code_is(value, 91.0) ||
+  code_is(value, 90.1) ||
   code_is(value, 91.1) ||
   code_is(value, 94.0)
 }
@@ -154,6 +155,7 @@ fn update_modal_state(
   let mut g54 = false
   let mut g90 = false
   let mut g91 = false
+  let mut g90_1 = false
   let mut g91_1 = false
   let mut g94 = false
   let mut m3 = false
@@ -201,6 +203,8 @@ fn update_modal_state(
         g90 = true
       } else if code_is(word.value, 91.0) {
         g91 = true
+      } else if code_is(word.value, 90.1) {
+        g90_1 = true
       } else if code_is(word.value, 91.1) {
         g91_1 = true
       } else if code_is(word.value, 94.0) {
@@ -270,6 +274,7 @@ fn update_modal_state(
   }
   if (g20 && g21) ||
     (g90 && g91) ||
+    (g90_1 && g91_1) ||
     motion_code_count > 1 ||
     (dwell && motion_code_count > 0) ||
     (m3 && m4) ||
@@ -293,6 +298,9 @@ fn update_modal_state(
   }
   if g91 {
     next.absolute = Some(false)
+  }
+  if g90_1 {
+    next.arc_center_incremental = Some(false)
   }
   if g91_1 {
     next.arc_center_incremental = Some(true)
@@ -441,7 +449,7 @@ fn update_modal_state(
               diagnostics,
               line,
               next.arc_center_incremental,
-              "G91.1 incremental arc-center mode",
+              "G90.1 or G91.1 arc-center mode",
             )
           }
         }

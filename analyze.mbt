@@ -37,7 +37,7 @@ fn motion_state_ready(
     state.tool_length_comp_off is Some(true)
   let arc_ready = if motion == 2 || motion == 3 {
     state.plane_xy is Some(true) &&
-    (!uses_center_format || state.arc_center_incremental is Some(true))
+    (!uses_center_format || state.arc_center_incremental is Some(_))
   } else {
     true
   }

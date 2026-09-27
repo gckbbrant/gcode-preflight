@@ -157,6 +157,81 @@ test "clockwise and counterclockwise I/J arcs choose opposite sweeps" {
 }
 
 ///|
+test "G90.1 uses absolute arc centers in the active G54 coordinates" {
+  let profile = test_profile_with(
+    Some({ x: 10.0, y: 0.0, z: 0.0, }),
+    { x: 5.0, y: 6.0, z: 0.0, },
+    100.0,
+    100.0,
+  )
+  let report = analyze(
+    "G17 G21 G90 G90.1 G94 G54 G40 G49 F100\nG3 X0 Y10 I0 J0", profile,
+  )
+  assert_true(report.status is Pass)
+  assert_eq(report.segments.length(), 1)
+  assert_true((report.segments[0].center_mm.unwrap().x - 5.0).abs() < 0.000001)
+  assert_true((report.segments[0].center_mm.unwrap().y - 6.0).abs() < 0.000001)
+  assert_true((report.segments[0].end_mm.x - 5.0).abs() < 0.000001)
+  assert_true((report.segments[0].end_mm.y - 16.0).abs() < 0.000001)
+  assert_true((report.distance_mm - 5.0 * @math.PI).abs() < 0.000001)
+}
+
+///|
+test "G90.1 center coordinates convert inches before applying G54 offset" {
+  let profile = test_profile_with(
+    Some({ x: 25.4, y: 0.0, z: 0.0, }),
+    { x: 5.08, y: 6.35, z: 0.0, },
+    100.0,
+    100.0,
+  )
+  let report = analyze(
+    "G17 G20 G90 G90.1 G94 G54 G40 G49 F10\nG3 X0 Y1 I0 J0", profile,
+  )
+  assert_true(report.status is Pass)
+  assert_true((report.segments[0].center_mm.unwrap().x - 5.08).abs() < 0.000001)
+  assert_true((report.segments[0].center_mm.unwrap().y - 6.35).abs() < 0.000001)
+  assert_true((report.distance_mm - 12.7 * @math.PI).abs() < 0.000001)
+}
+
+///|
+test "G90.1 requires both center coordinates and conflicts with G91.1" {
+  let profile = test_profile_with(
+    Some({ x: 10.0, y: 0.0, z: 0.0, }),
+    { x: 0.0, y: 0.0, z: 0.0, },
+    100.0,
+    100.0,
+  )
+  let setup = "G17 G21 G90 G90.1 G94 G54 G40 G49 F100\n"
+  let missing_j = analyze(setup + "G3 X0 Y10 I0", profile)
+  assert_true(missing_j.status is Fail)
+  assert_true(missing_j.diagnostics.any(d => d.code == "ARC_CENTER_REQUIRED"))
+  let conflict = analyze("G90.1 G91.1", test_profile())
+  assert_true(conflict.status is Incomplete)
+  assert_true(
+    conflict.diagnostics.any(d => d.code == "CONFLICTING_MODAL_CODES"),
+  )
+}
+
+///|
+test "I/J arcs require an explicit absolute or incremental center mode" {
+  let report = analyze(
+    "G17 G21 G90 G94 G54 G40 G49 F100\nG3 X0 Y10 I-10 J0",
+    test_profile_with(
+      Some({ x: 10.0, y: 0.0, z: 0.0, }),
+      { x: 0.0, y: 0.0, z: 0.0, },
+      100.0,
+      100.0,
+    ),
+  )
+  assert_true(report.status is Incomplete)
+  assert_true(
+    report.diagnostics.any(d => {
+      d.code == "MISSING_MODAL_SETUP" && d.message.contains("G90.1 or G91.1")
+    }),
+  )
+}
+
+///|
 test "signed R arcs select minor and major sweeps without G91.1" {
   let profile = test_profile_with(
     Some({ x: 10.0, y: 0.0, z: 0.0, }),

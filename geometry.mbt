@@ -221,7 +221,7 @@ fn arc_geometry(
       diagnostics,
       block.line,
       "CONFLICTING_ARC_FORMATS",
-      "Specify either R radius format or incremental I/J center format, not both.",
+      "Specify either R radius format or I/J center format, not both.",
       Error,
       false,
     )
@@ -243,7 +243,19 @@ fn arc_geometry(
       diagnostics,
       block.line,
       "ARC_CENTER_REQUIRED",
-      "G2/G3 requires at least one incremental I or J center offset.",
+      "G2/G3 requires I/J center coordinates.",
+      Error,
+      false,
+    )
+    return (None, 0.0, 0.0)
+  }
+  let absolute_center = state.arc_center_incremental is Some(false)
+  if absolute_center && !(has_i && has_j) {
+    add_diagnostic(
+      diagnostics,
+      block.line,
+      "ARC_CENTER_REQUIRED",
+      "G90.1 absolute center format requires both I and J coordinates.",
       Error,
       false,
     )
@@ -257,7 +269,15 @@ fn arc_geometry(
     Some(value) => value * factor
     None => 0.0
   }
-  let center : Vec3 = { x: start.x + i, y: start.y + j, z: start.z, }
+  let center : Vec3 = if absolute_center {
+    {
+      x: i + profile.g54_offset_mm.x,
+      y: j + profile.g54_offset_mm.y,
+      z: start.z,
+    }
+  } else {
+    { x: start.x + i, y: start.y + j, z: start.z, }
+  }
   let dx0 = start.x - center.x
   let dy0 = start.y - center.y
   let dx1 = end.x - center.x

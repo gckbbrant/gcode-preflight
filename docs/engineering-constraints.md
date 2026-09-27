@@ -16,7 +16,7 @@ Examples that require `INCOMPLETE` include:
 - an unknown G/M code that may affect execution state;
 - a motion block before required units, distance, work-coordinate, and
   compensation-cancel modes are established; arcs require G17, I/J center
-  arcs additionally require G91.1, and feed moves require G94;
+  arcs require an explicit G90.1 or G91.1 mode, and feed moves require G94;
 - any movement when the starting position is unknown. Provide
   initial_position_g54_mm in the profile to identify the first machine point;
 - unsupported semantics anywhere in the program, even when preceding moves
@@ -33,17 +33,18 @@ and test that unsupported or ambiguous input never produces `PASS`.
 ## Scope of a clean result
 
 The supported profile is a three-axis mill using G54, G17, millimeter/inch
-units, absolute/incremental endpoint coordinates, incremental I/J arc centers,
-signed R-format arcs, and G94 feed-per-minute. Positive R selects a sweep up to
-180 degrees; negative R selects a sweep greater than 180 degrees. R format
-requires distinct XY endpoints, so full circles use I/J centers. R arcs within
+units, absolute/incremental endpoint coordinates, absolute/incremental I/J arc
+centers, signed R-format arcs, and G94 feed-per-minute. An I/J arc requires an
+explicit G90.1 or G91.1 mode; G90.1 requires both I and J. Positive R selects
+a sweep up to 180 degrees; negative R selects a sweep greater than 180 degrees.
+R format requires distinct XY endpoints, so full circles use I/J centers. R arcs within
 15 degrees of a half or full circle receive a non-blocking rounding-sensitivity
 warning. The profile's optional initial_position_g54_mm field
 is required for programs that move; it is a G54 coordinate in millimeters and
 is converted to machine coordinates using g54_offset_mm. Travel checks cover
-programmed control points and interpolated XY arc extrema. They do not account for tool radius, holder
-geometry, tool length compensation, fixture geometry, controller lookahead,
-acceleration, or actual cutting load. `PASS` means only that the supported
+programmed control points and interpolated XY arc extrema. They do not account
+for tool radius, holder geometry, tool length compensation, fixture geometry,
+controller lookahead, acceleration, or actual cutting load. `PASS` means only that the supported
 subset was completely analyzed without detected profile violations.
 
 Travel-limit diagnostics carry the exact machine-space point in `point_mm`.

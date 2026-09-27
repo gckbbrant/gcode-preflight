@@ -1,0 +1,5 @@
+// import {
+//   "gckbbrant/gcode_preflight" @lib,
+// }
+
+pkgtype(kind: "executable")

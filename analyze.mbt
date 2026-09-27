@@ -79,6 +79,7 @@ pub fn analyze(program : String, profile : MachineProfile) -> AnalysisReport {
   let mut total_distance_mm = 0.0
   let mut dwell_seconds = 0.0
   let mut tool_changes = 0
+  let tool_change_lines : Array[Int] = []
   let mut state = default_modal_state()
   let mut execution_state_known = true
   let mut unknown_start_reported = false
@@ -112,6 +113,7 @@ pub fn analyze(program : String, profile : MachineProfile) -> AnalysisReport {
       }
       if block_has_code(block, 'M', 6.0) {
         tool_changes += 1
+        tool_change_lines.push(block.line)
       }
       if block_has_code(block, 'G', 4.0) {
         match block_word(block, 'P') {
@@ -217,7 +219,52 @@ pub fn analyze(program : String, profile : MachineProfile) -> AnalysisReport {
     }
   }
   let analysis_complete = !diagnostics.any(d => d.incomplete)
-  let estimate_complete = false
+  let mut estimated_time_seconds = dwell_seconds
+  let mut estimate_complete = true
+  for segment in segments {
+    match segment.kind {
+      Rapid =>
+        estimated_time_seconds += segment.length_mm /
+          profile.rapid_mm_per_min *
+          60.0
+      Linear | ClockwiseArc | CounterclockwiseArc =>
+        match segment.feed_mm_per_min {
+          Some(feed) if feed > 0.0 =>
+            estimated_time_seconds += segment.length_mm / feed * 60.0
+          _ => estimate_complete = false
+        }
+    }
+  }
+  if tool_changes > 0 {
+    match profile.tool_change_seconds {
+      Some(seconds) if seconds >= 0.0 =>
+        estimated_time_seconds += seconds * tool_changes.to_double()
+      _ => {
+        estimate_complete = false
+        let line = if tool_change_lines.is_empty() {
+          None
+        } else {
+          Some(tool_change_lines[0])
+        }
+        diagnostics.push({
+          code: "MISSING_TOOL_CHANGE_DURATION",
+          message: "M6 is present but the profile has no non-negative tool_change_seconds value.",
+          line,
+          severity: Warning,
+          incomplete: true,
+        })
+      }
+    }
+  }
+  if diagnostics.any(d => d.incomplete) ||
+    diagnostics.any(d => d.code == "MISSING_OR_INVALID_DWELL") {
+    estimate_complete = false
+  }
+  let estimated_time = if estimate_complete {
+    Some(estimated_time_seconds)
+  } else {
+    None
+  }
   let status = status_for(analysis_complete, estimate_complete, diagnostics)
   {
     status,
@@ -228,6 +275,6 @@ pub fn analyze(program : String, profile : MachineProfile) -> AnalysisReport {
     distance_mm: total_distance_mm,
     dwell_seconds,
     tool_changes,
-    estimated_time_seconds: None,
+    estimated_time_seconds: estimated_time,
   }
 }

@@ -20,9 +20,42 @@ jobs:
           echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
       - name: Toolchain version
         run: moon version --all
+      - name: Resolve MoonBit dependencies
+        run: moon update
       - name: Format
         run: moon fmt --check
       - name: Check all targets
         run: moon check --deny-warn --target all
       - name: Test all targets
         run: moon test --deny-warn --target all
+      - name: Check native CLI
+        run: moon check --deny-warn --target native cmd/main
+      - name: CLI valid sample and SVG
+        run: |
+          mkdir -p _build
+          moon run --target native cmd/main -- check samples/valid.nc --profile samples/profile.json --svg _build/valid.svg --json _build/valid-report.json
+          python3 -c "import json, xml.etree.ElementTree as ET; assert json.load(open('_build/valid-report.json'))['status'] == 'Pass'; ET.parse('_build/valid.svg')"
+      - name: CLI over-limit sample
+        shell: bash
+        run: |
+          set +e
+          moon run --target native cmd/main -- check samples/overlimit.nc --profile samples/profile.json --svg _build/overlimit.svg --json _build/overlimit-report.json > _build/overlimit.log 2>&1
+          status=$?
+          set -e
+          cat _build/overlimit.log
+          test "$status" -ne 0
+          grep -q 'Status: FAIL' _build/overlimit.log
+          grep -q 'TRAVEL_LIMIT_X' _build/overlimit.log
+          python3 -c "import json; assert json.load(open('_build/overlimit-report.json'))['status'] == 'Fail'"
+      - name: CLI unsupported sample
+        shell: bash
+        run: |
+          set +e
+          moon run --target native cmd/main -- check samples/unsupported.nc --profile samples/profile.json --svg _build/unsupported.svg --json _build/unsupported-report.json > _build/unsupported.log 2>&1
+          status=$?
+          set -e
+          cat _build/unsupported.log
+          test "$status" -ne 0
+          grep -q 'Status: INCOMPLETE' _build/unsupported.log
+          grep -q 'UNSUPPORTED_G_CODE' _build/unsupported.log
+          python3 -c "import json; assert json.load(open('_build/unsupported-report.json'))['status'] == 'Incomplete'"

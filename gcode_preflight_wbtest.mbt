@@ -214,3 +214,59 @@ test "bad radius and missing initial position cannot pass" {
   )
   assert_true(no_start.status != Pass)
 }
+
+///|
+test "cycle time includes rapid, feed, dwell, and configured tool change" {
+  let report = analyze(
+    "G21 G90 G54 G40 G49 G94 F600\nG0 X10 Y0 Z0\nG1 X20 F600\nG4 P2\nT1 M6\nM2",
+    test_profile(),
+  )
+  assert_true(report.analysis_complete)
+  assert_true(report.estimate_complete)
+  assert_true(report.status is Pass)
+  assert_eq(report.tool_changes, 1)
+  assert_true((report.dwell_seconds - 2.0).abs() < 0.000001)
+  assert_true((report.estimated_time_seconds.unwrap() - 18.2).abs() < 0.000001)
+}
+
+///|
+test "missing tool-change duration leaves an incomplete estimate" {
+  let profile = { ..test_profile(), tool_change_seconds: None }
+  let report = analyze("G21 G90 G54 G40 G49 T1 M6", profile)
+  assert_true(report.analysis_complete)
+  assert_true(!report.estimate_complete)
+  assert_true(report.status is Incomplete)
+  assert_true(
+    report.diagnostics.any(d => {
+      d.code == "MISSING_TOOL_CHANGE_DURATION" && d.incomplete
+    }),
+  )
+}
+
+///|
+test "SVG contains linear and arc commands with status" {
+  let profile = test_profile_with(
+    Some({ x: 10.0, y: 0.0, z: 0.0 }),
+    { x: 0.0, y: 0.0, z: 0.0 },
+    100.0,
+    100.0,
+  )
+  let report = analyze(
+    "G17 G21 G90 G91.1 G94 G54 G40 G49 F100\nG1 X10 Y10\nG2 X0 Y0 I-10 J0\nG71",
+    profile,
+  )
+  let svg = render_svg(report)
+  assert_true(svg.has_prefix("<svg"))
+  assert_true(svg.contains("class=\"linear\""))
+  assert_true(svg.contains("class=\"arc-cw\""))
+  assert_true(svg.contains("CNC G-code Preflight — INCOMPLETE"))
+  assert_true(svg.contains(" A "))
+}
+
+///|
+test "SVG labels incomplete programs without drawing a misleading path" {
+  let report = analyze("G71", test_profile())
+  let svg = render_svg(report)
+  assert_true(svg.contains("INCOMPLETE"))
+  assert_true(!svg.contains("<path "))
+}

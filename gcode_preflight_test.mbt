@@ -1,3 +1,2 @@
-// Blackbox tests run against the package's public API. Use `@gcode_preflight` to import.
-// Prefer high-level behaviors over implementation details.
-// Run `moon test` to execute and `moon test --update` to refresh snapshots.
+// Public analysis behavior is currently covered in gcode_preflight_wbtest.mbt.
+// See README.mbt.md for package usage and CLI examples.

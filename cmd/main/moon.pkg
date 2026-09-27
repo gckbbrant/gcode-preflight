@@ -1,5 +1,12 @@
-// import {
-//   "gckbbrant/gcode_preflight" @lib,
-// }
+import {
+  "gckbbrant/gcode-preflight" @app,
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+  "moonbitlang/async/stdio",
+  "moonbitlang/core/argparse",
+  "moonbitlang/core/json",
+}
 
 pkgtype(kind: "executable")
+
+supported_targets = "native"

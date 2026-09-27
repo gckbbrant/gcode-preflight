@@ -191,6 +191,25 @@ test "arc cardinal extrema are checked against axis travel" {
   )
   assert_true(report.diagnostics.any(d => d.code == "TRAVEL_LIMIT_Y"))
   assert_true(report.status == Fail)
+  assert_true(report.travel_limits.y.max == 8.0)
+  let has_exact_violation_point = report.diagnostics.any(d => {
+    if d.code == "TRAVEL_LIMIT_Y" {
+      match d.point_mm {
+        Some(point) =>
+          point.x.abs() < 0.000001 &&
+          (point.y - 10.0).abs() < 0.000001 &&
+          point.z == 0.0
+        None => false
+      }
+    } else {
+      false
+    }
+  })
+  assert_true(has_exact_violation_point)
+  let svg = render_svg(report)
+  assert_true(svg.contains("class=\"travel-limit\""))
+  assert_true(svg.contains("class=\"arc-ccw violation\""))
+  assert_true(svg.contains("class=\"violation-point\""))
 }
 
 ///|

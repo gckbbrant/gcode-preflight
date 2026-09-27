@@ -148,11 +148,37 @@ fn svg_segment_class(kind : MotionKind) -> String {
 }
 
 ///|
+fn segment_violates_travel(
+  report : AnalysisReport,
+  segment : ToolPathSegment,
+) -> Bool {
+  report.diagnostics.any(diagnostic => {
+    diagnostic.line is Some(line) &&
+    line == segment.line &&
+    diagnostic.code.has_prefix("TRAVEL_LIMIT_")
+  })
+}
+
+///|
+fn svg_segment_class_for_report(
+  report : AnalysisReport,
+  segment : ToolPathSegment,
+) -> String {
+  let motion_class = svg_segment_class(segment.kind)
+  if segment_violates_travel(report, segment) {
+    motion_class + " violation"
+  } else {
+    motion_class
+  }
+}
+
+///|
 /// Render a top-view SVG of the analyzed XY toolpath.
 ///
 /// Rapid moves use a dashed gray line. Feed moves and arcs use blue and purple
 /// strokes. The view is an XY projection; helical Z motion is represented by
-/// the same projected circular path.
+/// the same projected circular path. Configured XY limits and travel violations
+/// are shown as a boundary and red path/point markers.
 pub fn render_svg(report : AnalysisReport) -> String {
   let bounds = SvgBounds::{
     has_point: false,
@@ -160,6 +186,12 @@ pub fn render_svg(report : AnalysisReport) -> String {
     max_x: 0.0,
     min_y: 0.0,
     max_y: 0.0,
+  }
+  let limits = report.travel_limits
+  let show_limits = limits.x.min < limits.x.max && limits.y.min < limits.y.max
+  if show_limits {
+    include_svg_point(bounds, { x: limits.x.min, y: limits.y.min, z: 0.0, })
+    include_svg_point(bounds, { x: limits.x.max, y: limits.y.max, z: 0.0, })
   }
   for segment in report.segments {
     include_segment_bounds(bounds, segment)
@@ -189,11 +221,16 @@ pub fn render_svg(report : AnalysisReport) -> String {
     "  <title>CNC G-code Preflight — \{svg_status(report.status)}</title>\n",
   )
   svg.write_string(
-    "  <style>path{fill:none;stroke-width:0.35;stroke-linecap:round;stroke-linejoin:round}.rapid{stroke:#64748b;stroke-dasharray:1.2 0.8}.linear{stroke:#2563eb}.arc-cw{stroke:#7c3aed}.arc-ccw{stroke:#db2777}.point{fill:#0f172a}</style>\n",
+    "  <style>path{fill:none;stroke-width:0.35;stroke-linecap:round;stroke-linejoin:round}.rapid{stroke:#64748b;stroke-dasharray:1.2 0.8}.linear{stroke:#2563eb}.arc-cw{stroke:#7c3aed}.arc-ccw{stroke:#db2777}.point{fill:#0f172a}.travel-limit{fill:#cbd5e1;fill-opacity:.12;stroke:#334155;stroke-width:.35;stroke-dasharray:2 1}.violation{stroke:#dc2626;stroke-width:.65}.violation-point{fill:#dc2626;stroke:#fff;stroke-width:.25}</style>\n",
   )
+  if show_limits {
+    svg.write_string(
+      "  <rect class=\"travel-limit\" x=\"\{limits.x.min}\" y=\"\{-limits.y.max}\" width=\"\{limits.x.max - limits.x.min}\" height=\"\{limits.y.max - limits.y.min}\"><title>Configured XY travel boundary (mm)</title></rect>\n",
+    )
+  }
   for segment in report.segments {
     svg.write_string(
-      "  <path class=\"\{svg_segment_class(segment.kind)}\" d=\"\{svg_segment_path(segment)}\" data-line=\"\{segment.line}\" />\n",
+      "  <path class=\"\{svg_segment_class_for_report(report, segment)}\" d=\"\{svg_segment_path(segment)}\" data-line=\"\{segment.line}\" />\n",
     )
   }
   if report.segments.length() > 0 {
@@ -205,6 +242,17 @@ pub fn render_svg(report : AnalysisReport) -> String {
       svg.write_string(
         "  <circle class=\"point\" cx=\"\{segment.end_mm.x}\" cy=\"\{-segment.end_mm.y}\" r=\"0.3\"><title>Line \{segment.line}</title></circle>\n",
       )
+    }
+  }
+  for diagnostic in report.diagnostics {
+    if diagnostic.code.has_prefix("TRAVEL_LIMIT_") {
+      match (diagnostic.line, diagnostic.point_mm) {
+        (Some(line), Some(point)) =>
+          svg.write_string(
+            "  <circle class=\"violation-point\" cx=\"\{point.x}\" cy=\"\{-point.y}\" r=\"0.9\" data-line=\"\{line}\"><title>Line \{line}: \{diagnostic.code} at X\{point.x} Y\{point.y} Z\{point.z} mm</title></circle>\n",
+          )
+        _ => ()
+      }
     }
   }
   svg.write_string("</svg>\n")

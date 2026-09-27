@@ -14,6 +14,14 @@ pub(all) struct Vec3 {
 } derive(Eq, ToJson, FromJson)
 
 ///|
+/// Configured machine travel in millimeters.
+pub(all) struct TravelLimits {
+  x : AxisLimit
+  y : AxisLimit
+  z : AxisLimit
+} derive(ToJson)
+
+///|
 /// Machine settings used by analysis. All lengths and speeds are expressed in
 /// millimeters and millimeters per minute.
 pub(all) struct MachineProfile {
@@ -43,6 +51,7 @@ pub(all) struct Diagnostic {
   line : Int?
   severity : DiagnosticSeverity
   incomplete : Bool
+  point_mm : Vec3?
 } derive(ToJson)
 
 ///|
@@ -81,6 +90,7 @@ pub(all) struct AnalysisReport {
   status : AnalysisStatus
   analysis_complete : Bool
   estimate_complete : Bool
+  travel_limits : TravelLimits
   diagnostics : Array[Diagnostic]
   segments : Array[ToolPathSegment]
   distance_mm : Double
@@ -106,6 +116,9 @@ pub extend Vec3 with ToJson::{to_json}
 
 ///|
 pub extend Vec3 with @json.FromJson::{from_json}
+
+///|
+pub extend TravelLimits with ToJson::{to_json}
 
 ///|
 pub extend MachineProfile with ToJson::{to_json}

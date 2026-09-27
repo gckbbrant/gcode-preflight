@@ -41,3 +41,9 @@ programmed control points and interpolated XY arc extrema. They do not account f
 geometry, tool length compensation, fixture geometry, controller lookahead,
 acceleration, or actual cutting load. `PASS` means only that the supported
 subset was completely analyzed without detected profile violations.
+
+Travel-limit diagnostics carry the exact machine-space point in `point_mm`.
+The report also carries the configured X/Y/Z limits so `render_svg(report)` can
+draw the XY envelope and highlight each violating move and point without
+parsing human-readable diagnostic messages. A Z violation is marked at its XY
+projection and includes the Z value in the marker title.

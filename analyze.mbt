@@ -18,6 +18,7 @@ fn validate_profile(profile : MachineProfile) -> Array[Diagnostic] {
       line: None,
       severity: Error,
       incomplete: true,
+      point_mm: None,
     })
   }
   diagnostics
@@ -68,7 +69,8 @@ fn update_position_after_unknown_start(
 /// Analyze supported G-code against a three-axis machine profile.
 ///
 /// A report is incomplete whenever motion semantics or the initial position
-/// are unknown. Time estimation is added by the reporting stage.
+/// are unknown. It includes configured travel limits and machine-space points
+/// for detected travel violations so the SVG can mark the exact findings.
 pub fn analyze(program : String, profile : MachineProfile) -> AnalysisReport {
   let parsed = parse_program(program)
   let diagnostics = parsed.diagnostics.copy()
@@ -252,6 +254,7 @@ pub fn analyze(program : String, profile : MachineProfile) -> AnalysisReport {
           line,
           severity: Warning,
           incomplete: true,
+          point_mm: None,
         })
       }
     }
@@ -270,6 +273,7 @@ pub fn analyze(program : String, profile : MachineProfile) -> AnalysisReport {
     status,
     analysis_complete,
     estimate_complete,
+    travel_limits: { x: profile.x, y: profile.y, z: profile.z, },
     diagnostics,
     segments,
     distance_mm: total_distance_mm,

@@ -1,0 +1,9 @@
+{
+  "x": { "min": -100.0, "max": 100.0 },
+  "y": { "min": -100.0, "max": 100.0 },
+  "z": { "min": -100.0, "max": 100.0 },
+  "g54_offset_mm": { "x": 5.0, "y": 0.0, "z": 0.0 },
+  "initial_position_g54_mm": { "x": 0.0, "y": 0.0, "z": 0.0 },
+  "rapid_mm_per_min": 1000.0,
+  "arc_tolerance_mm": 0.01
+}

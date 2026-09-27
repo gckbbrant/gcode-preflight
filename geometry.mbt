@@ -145,7 +145,33 @@ fn add_diagnostic(
   severity : DiagnosticSeverity,
   incomplete : Bool,
 ) -> Unit {
-  diagnostics.push({ code, message, line: Some(line), severity, incomplete, })
+  diagnostics.push({
+    code,
+    message,
+    line: Some(line),
+    severity,
+    incomplete,
+    point_mm: None,
+  })
+}
+
+///|
+fn add_travel_violation(
+  diagnostics : Array[Diagnostic],
+  line : Int,
+  axis_name : String,
+  value : Double,
+  limit : AxisLimit,
+  point : Vec3,
+) -> Unit {
+  diagnostics.push({
+    code: "TRAVEL_LIMIT_\{axis_name}",
+    message: "\{axis_name} coordinate \{value} mm is outside \{limit.min}..\{limit.max} mm.",
+    line: Some(line),
+    severity: Error,
+    incomplete: false,
+    point_mm: Some(point),
+  })
 }
 
 ///|
@@ -155,16 +181,10 @@ fn check_axis(
   axis_name : String,
   value : Double,
   limit : AxisLimit,
+  point : Vec3,
 ) -> Unit {
   if value < limit.min - 0.000000001 || value > limit.max + 0.000000001 {
-    add_diagnostic(
-      diagnostics,
-      line,
-      "TRAVEL_LIMIT_\{axis_name}",
-      "\{axis_name} coordinate \{value} mm is outside \{limit.min}..\{limit.max} mm.",
-      Error,
-      false,
-    )
+    add_travel_violation(diagnostics, line, axis_name, value, limit, point)
   }
 }
 
@@ -175,9 +195,9 @@ fn check_point(
   point : Vec3,
   profile : MachineProfile,
 ) -> Unit {
-  check_axis(diagnostics, line, "X", point.x, profile.x)
-  check_axis(diagnostics, line, "Y", point.y, profile.y)
-  check_axis(diagnostics, line, "Z", point.z, profile.z)
+  check_axis(diagnostics, line, "X", point.x, profile.x, point)
+  check_axis(diagnostics, line, "Y", point.y, profile.y, point)
+  check_axis(diagnostics, line, "Z", point.z, profile.z, point)
 }
 
 ///|
@@ -212,7 +232,7 @@ fn arc_geometry(
     Some(value) => value * factor
     None => 0.0
   }
-  let center = { x: start.x + i, y: start.y + j, z: start.z, }
+  let center : Vec3 = { x: start.x + i, y: start.y + j, z: start.z, }
   let dx0 = start.x - center.x
   let dy0 = start.y - center.y
   let dx1 = end.x - center.x
@@ -267,7 +287,7 @@ fn check_arc_extrema(
     let fraction = arc_fraction(start_angle, angle, sweep)
     if fraction >= 0.0 && fraction <= 1.0 {
       let z = start.z + (end.z - start.z) * fraction
-      let point = {
+      let point : Vec3 = {
         x: center.x + radius * @math.cos(angle),
         y: center.y + radius * @math.sin(angle),
         z,

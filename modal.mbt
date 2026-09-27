@@ -48,6 +48,7 @@ fn mode_diagnostic(
     line: Some(line),
     severity: Error,
     incomplete,
+    point_mm: None,
   })
 }
 

@@ -1,0 +1,133 @@
+[
+  {
+    "id": "sample-valid",
+    "program": "../../samples/valid.nc",
+    "profile": "../../samples/profile.json",
+    "status": "Pass",
+    "segment_count": 6,
+    "distance_mm": 129.83185307179588,
+    "estimate_complete": true,
+    "estimated_time_seconds": 42.18637061435918,
+    "diagnostics": []
+  },
+  {
+    "id": "sample-overlimit",
+    "program": "../../samples/overlimit.nc",
+    "profile": "../../samples/profile.json",
+    "status": "Fail",
+    "segment_count": 3,
+    "distance_mm": 260.0,
+    "diagnostics": [
+      { "code": "TRAVEL_LIMIT_X", "line": 7 }
+    ],
+    "violation_points_mm": [
+      { "x": 250.0, "y": 10.0, "z": 0.0 }
+    ]
+  },
+  {
+    "id": "sample-unsupported",
+    "program": "../../samples/unsupported.nc",
+    "profile": "../../samples/profile.json",
+    "status": "Incomplete",
+    "segment_count": 1,
+    "distance_mm": 15.0,
+    "estimate_complete": false,
+    "estimated_time_seconds": null,
+    "diagnostics": [
+      { "code": "UNSUPPORTED_G_CODE", "line": 6 }
+    ]
+  },
+  {
+    "id": "linuxcnc-center-arcs",
+    "program": "fixtures/linuxcnc-center-arcs.nc",
+    "profile": "profiles/default.json",
+    "status": "Pass",
+    "segment_count": 2,
+    "segment_kinds": ["ClockwiseArc", "CounterclockwiseArc"],
+    "distance_mm": 3.141592653589793,
+    "arc_sweeps_radians": [-1.5707963267948966, 1.5707963267948966],
+    "diagnostics": []
+  },
+  {
+    "id": "linuxcnc-full-circle",
+    "program": "fixtures/linuxcnc-full-circle.nc",
+    "profile": "profiles/full-circle.json",
+    "status": "Pass",
+    "segment_count": 1,
+    "segment_kinds": ["CounterclockwiseArc"],
+    "distance_mm": 6.283185307179586,
+    "arc_sweeps_radians": [6.283185307179586],
+    "diagnostics": []
+  },
+  {
+    "id": "linuxcnc-helix",
+    "program": "fixtures/linuxcnc-helix.nc",
+    "profile": "profiles/helix.json",
+    "status": "Pass",
+    "segment_count": 1,
+    "segment_kinds": ["ClockwiseArc"],
+    "distance_mm": 12.530424340563858,
+    "arc_sweeps_radians": [-2.498091544796509],
+    "diagnostics": []
+  },
+  {
+    "id": "arc-interior-overlimit",
+    "program": "fixtures/arc-interior-overlimit.nc",
+    "profile": "profiles/arc-envelope.json",
+    "status": "Fail",
+    "segment_count": 1,
+    "segment_kinds": ["ClockwiseArc"],
+    "distance_mm": 47.12388980384689,
+    "diagnostics": [
+      { "code": "TRAVEL_LIMIT_X", "line": 3 },
+      { "code": "TRAVEL_LIMIT_X", "line": 3 }
+    ],
+    "violation_points_mm": [
+      { "x": 10.0, "y": 0.0, "z": 0.0 },
+      { "x": -10.0, "y": 0.0, "z": 0.0 }
+    ]
+  },
+  {
+    "id": "incremental-coordinate-mode",
+    "program": "fixtures/incremental-coordinate-mode.nc",
+    "profile": "profiles/default.json",
+    "status": "Pass",
+    "segment_count": 2,
+    "segment_kinds": ["Rapid", "Linear"],
+    "distance_mm": 7.0,
+    "diagnostics": []
+  },
+  {
+    "id": "inch-g54-offset",
+    "program": "fixtures/inch-g54-offset.nc",
+    "profile": "profiles/inch-offset.json",
+    "status": "Pass",
+    "segment_count": 1,
+    "segment_kinds": ["Rapid"],
+    "distance_mm": 25.4,
+    "diagnostics": []
+  },
+  {
+    "id": "dwell-toolchange",
+    "program": "fixtures/dwell-toolchange.nc",
+    "profile": "profiles/default.json",
+    "status": "Pass",
+    "segment_count": 0,
+    "distance_mm": 0.0,
+    "estimated_time_seconds": 15.0,
+    "diagnostics": []
+  },
+  {
+    "id": "missing-feed",
+    "program": "fixtures/missing-feed.nc",
+    "profile": "profiles/default.json",
+    "status": "Fail",
+    "segment_count": 1,
+    "distance_mm": 5.0,
+    "estimate_complete": false,
+    "estimated_time_seconds": null,
+    "diagnostics": [
+      { "code": "MISSING_FEED", "line": 3 }
+    ]
+  }
+]

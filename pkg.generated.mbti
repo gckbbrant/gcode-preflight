@@ -17,6 +17,7 @@ pub(all) struct AnalysisReport {
   status : AnalysisStatus
   analysis_complete : Bool
   estimate_complete : Bool
+  travel_limits : TravelLimits
   diagnostics : Array[Diagnostic]
   segments : Array[ToolPathSegment]
   distance_mm : Double
@@ -50,6 +51,7 @@ pub(all) struct Diagnostic {
   line : Int?
   severity : DiagnosticSeverity
   incomplete : Bool
+  point_mm : Vec3?
 } derive(ToJson)
 pub fn Diagnostic::to_json(Self) -> Json
 
@@ -94,6 +96,13 @@ pub(all) struct ToolPathSegment {
   feed_mm_per_min : Double?
 } derive(ToJson)
 pub fn ToolPathSegment::to_json(Self) -> Json
+
+pub(all) struct TravelLimits {
+  x : AxisLimit
+  y : AxisLimit
+  z : AxisLimit
+} derive(ToJson)
+pub fn TravelLimits::to_json(Self) -> Json
 
 pub(all) struct Vec3 {
   x : Double

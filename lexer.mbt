@@ -69,6 +69,7 @@ fn add_lexical_issue(
     line: Some(line),
     severity: Error,
     incomplete: true,
+    point_mm: None,
   })
 }
 

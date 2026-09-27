@@ -55,7 +55,7 @@ fn endpoint_from_words(
       }
     None => start.z
   }
-  Some({ x, y, z })
+  Some({ x, y, z, })
 }
 
 ///|
@@ -145,7 +145,7 @@ fn add_diagnostic(
   severity : DiagnosticSeverity,
   incomplete : Bool,
 ) -> Unit {
-  diagnostics.push({ code, message, line: Some(line), severity, incomplete })
+  diagnostics.push({ code, message, line: Some(line), severity, incomplete, })
 }
 
 ///|
@@ -212,7 +212,7 @@ fn arc_geometry(
     Some(value) => value * factor
     None => 0.0
   }
-  let center = { x: start.x + i, y: start.y + j, z: start.z }
+  let center = { x: start.x + i, y: start.y + j, z: start.z, }
   let dx0 = start.x - center.x
   let dy0 = start.y - center.y
   let dx1 = end.x - center.x

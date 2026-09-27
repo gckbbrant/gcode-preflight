@@ -88,3 +88,51 @@ pub(all) struct AnalysisReport {
   tool_changes : Int
   estimated_time_seconds : Double?
 } derive(ToJson)
+
+///|
+pub extend AxisLimit with Eq::{not_equal, equal}
+
+///|
+pub extend AxisLimit with ToJson::{to_json}
+
+///|
+pub extend AxisLimit with @json.FromJson::{from_json}
+
+///|
+pub extend Vec3 with Eq::{not_equal, equal}
+
+///|
+pub extend Vec3 with ToJson::{to_json}
+
+///|
+pub extend Vec3 with @json.FromJson::{from_json}
+
+///|
+pub extend MachineProfile with ToJson::{to_json}
+
+///|
+pub extend MachineProfile with @json.FromJson::{from_json}
+
+///|
+pub extend DiagnosticSeverity with Eq::{not_equal, equal}
+
+///|
+pub extend DiagnosticSeverity with ToJson::{to_json}
+
+///|
+pub extend Diagnostic with ToJson::{to_json}
+
+///|
+pub extend AnalysisStatus with Eq::{not_equal, equal}
+
+///|
+pub extend AnalysisStatus with ToJson::{to_json}
+
+///|
+pub extend MotionKind with ToJson::{to_json}
+
+///|
+pub extend ToolPathSegment with ToJson::{to_json}
+
+///|
+pub extend AnalysisReport with ToJson::{to_json}

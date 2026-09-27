@@ -133,7 +133,7 @@ fn lex_line(
         )
         i += 1
       } else {
-        words.push({ address, value })
+        words.push({ address, value, })
         saw_word = true
         i = next
       }
@@ -155,7 +155,7 @@ fn lex_line(
       diagnostics, line_number, "UNCLOSED_COMMENT", "A parenthesis comment is not closed before the end of the line.",
     )
   }
-  let block = if saw_word { Some({ line: line_number, words }) } else { None }
+  let block = if saw_word { Some({ line: line_number, words, }) } else { None }
   (block, diagnostics)
 }
 
@@ -173,5 +173,5 @@ fn parse_program(program : String) -> ParsedProgram {
       None => ()
     }
   }
-  { blocks, diagnostics }
+  { blocks, diagnostics, }
 }

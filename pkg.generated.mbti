@@ -24,17 +24,25 @@ pub(all) struct AnalysisReport {
   tool_changes : Int
   estimated_time_seconds : Double?
 } derive(ToJson)
+pub fn AnalysisReport::to_json(Self) -> Json
 
 pub(all) enum AnalysisStatus {
   Pass
   Fail
   Incomplete
 } derive(Eq, ToJson)
+pub fn AnalysisStatus::equal(Self, Self) -> Bool
+pub fn AnalysisStatus::not_equal(Self, Self) -> Bool
+pub fn AnalysisStatus::to_json(Self) -> Json
 
 pub(all) struct AxisLimit {
   min : Double
   max : Double
 } derive(Eq, ToJson, @json.FromJson)
+pub fn AxisLimit::equal(Self, Self) -> Bool
+pub fn AxisLimit::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AxisLimit::not_equal(Self, Self) -> Bool
+pub fn AxisLimit::to_json(Self) -> Json
 
 pub(all) struct Diagnostic {
   code : String
@@ -43,12 +51,16 @@ pub(all) struct Diagnostic {
   severity : DiagnosticSeverity
   incomplete : Bool
 } derive(ToJson)
+pub fn Diagnostic::to_json(Self) -> Json
 
 pub(all) enum DiagnosticSeverity {
   Error
   Warning
   Info
 } derive(Eq, ToJson)
+pub fn DiagnosticSeverity::equal(Self, Self) -> Bool
+pub fn DiagnosticSeverity::not_equal(Self, Self) -> Bool
+pub fn DiagnosticSeverity::to_json(Self) -> Json
 
 pub(all) struct MachineProfile {
   x : AxisLimit
@@ -60,6 +72,8 @@ pub(all) struct MachineProfile {
   arc_tolerance_mm : Double
   tool_change_seconds : Double?
 } derive(ToJson, @json.FromJson)
+pub fn MachineProfile::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn MachineProfile::to_json(Self) -> Json
 
 pub(all) enum MotionKind {
   Rapid
@@ -67,6 +81,7 @@ pub(all) enum MotionKind {
   ClockwiseArc
   CounterclockwiseArc
 } derive(ToJson)
+pub fn MotionKind::to_json(Self) -> Json
 
 pub(all) struct ToolPathSegment {
   line : Int
@@ -78,12 +93,17 @@ pub(all) struct ToolPathSegment {
   length_mm : Double
   feed_mm_per_min : Double?
 } derive(ToJson)
+pub fn ToolPathSegment::to_json(Self) -> Json
 
 pub(all) struct Vec3 {
   x : Double
   y : Double
   z : Double
 } derive(Eq, ToJson, @json.FromJson)
+pub fn Vec3::equal(Self, Self) -> Bool
+pub fn Vec3::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn Vec3::not_equal(Self, Self) -> Bool
+pub fn Vec3::to_json(Self) -> Json
 
 // Type aliases
 

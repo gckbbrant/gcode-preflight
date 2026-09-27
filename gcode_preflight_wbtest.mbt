@@ -6,9 +6,9 @@ fn test_profile_with(
   y_max : Double,
 ) -> MachineProfile {
   {
-    x: { min: -100.0, max: x_max },
-    y: { min: -100.0, max: y_max },
-    z: { min: -100.0, max: 100.0 },
+    x: { min: -100.0, max: x_max, },
+    y: { min: -100.0, max: y_max, },
+    z: { min: -100.0, max: 100.0, },
     g54_offset_mm: offset,
     initial_position_g54_mm: initial,
     rapid_mm_per_min: 3000.0,
@@ -20,8 +20,8 @@ fn test_profile_with(
 ///|
 fn test_profile() -> MachineProfile {
   test_profile_with(
-    Some({ x: 0.0, y: 0.0, z: 0.0 }),
-    { x: 0.0, y: 0.0, z: 0.0 },
+    Some({ x: 0.0, y: 0.0, z: 0.0, }),
+    { x: 0.0, y: 0.0, z: 0.0, },
     100.0,
     100.0,
   )
@@ -116,8 +116,8 @@ test "R arcs and macro expressions are incomplete" {
 ///|
 test "inch coordinates and G54 offset convert to machine millimeters" {
   let profile = test_profile_with(
-    Some({ x: 0.0, y: 0.0, z: 0.0 }),
-    { x: 5.0, y: 0.0, z: 0.0 },
+    Some({ x: 0.0, y: 0.0, z: 0.0, }),
+    { x: 5.0, y: 0.0, z: 0.0, },
     100.0,
     100.0,
   )
@@ -143,8 +143,8 @@ test "absolute and incremental coordinates share the programmed endpoint" {
 ///|
 test "clockwise and counterclockwise I/J arcs choose opposite sweeps" {
   let profile = test_profile_with(
-    Some({ x: 10.0, y: 0.0, z: 0.0 }),
-    { x: 0.0, y: 0.0, z: 0.0 },
+    Some({ x: 10.0, y: 0.0, z: 0.0, }),
+    { x: 0.0, y: 0.0, z: 0.0, },
     100.0,
     100.0,
   )
@@ -162,8 +162,8 @@ test "clockwise and counterclockwise I/J arcs choose opposite sweeps" {
 ///|
 test "full-circle and helical arcs include circumference and Z travel" {
   let profile = test_profile_with(
-    Some({ x: 10.0, y: 0.0, z: 0.0 }),
-    { x: 0.0, y: 0.0, z: 0.0 },
+    Some({ x: 10.0, y: 0.0, z: 0.0, }),
+    { x: 0.0, y: 0.0, z: 0.0, },
     100.0,
     100.0,
   )
@@ -181,8 +181,8 @@ test "full-circle and helical arcs include circumference and Z travel" {
 ///|
 test "arc cardinal extrema are checked against axis travel" {
   let profile = test_profile_with(
-    Some({ x: 10.0, y: 0.0, z: 0.0 }),
-    { x: 0.0, y: 0.0, z: 0.0 },
+    Some({ x: 10.0, y: 0.0, z: 0.0, }),
+    { x: 0.0, y: 0.0, z: 0.0, },
     100.0,
     8.0,
   )
@@ -196,8 +196,8 @@ test "arc cardinal extrema are checked against axis travel" {
 ///|
 test "bad radius and missing initial position cannot pass" {
   let profile = test_profile_with(
-    Some({ x: 10.0, y: 0.0, z: 0.0 }),
-    { x: 0.0, y: 0.0, z: 0.0 },
+    Some({ x: 10.0, y: 0.0, z: 0.0, }),
+    { x: 0.0, y: 0.0, z: 0.0, },
     100.0,
     100.0,
   )
@@ -207,7 +207,7 @@ test "bad radius and missing initial position cannot pass" {
   assert_true(bad_arc.diagnostics.any(d => d.code == "INVALID_ARC_RADIUS"))
   let no_start = analyze(
     "G21 G90 G54 G40 G49 G0 X1 Y1 Z0",
-    test_profile_with(None, { x: 0.0, y: 0.0, z: 0.0 }, 100.0, 100.0),
+    test_profile_with(None, { x: 0.0, y: 0.0, z: 0.0, }, 100.0, 100.0),
   )
   assert_true(
     no_start.diagnostics.any(d => d.code == "UNKNOWN_INITIAL_POSITION"),
@@ -231,7 +231,7 @@ test "cycle time includes rapid, feed, dwell, and configured tool change" {
 
 ///|
 test "missing tool-change duration leaves an incomplete estimate" {
-  let profile = { ..test_profile(), tool_change_seconds: None }
+  let profile = { ..test_profile(), tool_change_seconds: None, }
   let report = analyze("G21 G90 G54 G40 G49 T1 M6", profile)
   assert_true(report.analysis_complete)
   assert_true(!report.estimate_complete)
@@ -246,8 +246,8 @@ test "missing tool-change duration leaves an incomplete estimate" {
 ///|
 test "SVG contains linear and arc commands with status" {
   let profile = test_profile_with(
-    Some({ x: 10.0, y: 0.0, z: 0.0 }),
-    { x: 0.0, y: 0.0, z: 0.0 },
+    Some({ x: 10.0, y: 0.0, z: 0.0, }),
+    { x: 0.0, y: 0.0, z: 0.0, },
     100.0,
     100.0,
   )

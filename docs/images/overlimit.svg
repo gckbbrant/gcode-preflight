@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1064.9289099526065" viewBox="-33.25 -244.5 316.5 280.875" role="img" aria-label="CNC G-code preflight toolpath report">
+  <title>CNC G-code Preflight — FAIL</title>
+  <style>path{fill:none;stroke-width:0.35;stroke-linecap:round;stroke-linejoin:round}.rapid{stroke:#64748b;stroke-dasharray:1.2 0.8}.linear{stroke:#2563eb}.arc-cw{stroke:#7c3aed}.arc-ccw{stroke:#db2777}.point{fill:#0f172a}.travel-limit{fill:#cbd5e1;fill-opacity:.12;stroke:#334155;stroke-width:.35;stroke-dasharray:2 1}.violation{stroke:#dc2626;stroke-width:.65}.violation-point{fill:#dc2626;stroke:#fff;stroke-width:.25}</style>
+  <style>text{font-family:Inter,ui-sans-serif,system-ui,sans-serif;fill:#0f172a}.title{font-weight:700}.meta,.axis-label,.tick{fill:#475569}.tick{fill:#64748b;text-anchor:middle}.axis-label{text-anchor:middle}.header-rule{stroke:#cbd5e1;stroke-width:.25}.grid{stroke:#94a3b8;stroke-opacity:.32;stroke-width:.18}.status-pass{fill:#047857}.status-fail{fill:#b91c1c}.status-incomplete{fill:#b45309}.legend-label{fill:#334155}</style>
+  <rect x="-33.25" y="-244.5" width="316.5" height="280.875" fill="#f8fafc" rx="3.4375000000000004" />
+  <text class="title" x="-18.75" y="-234.8125" font-size="8.4375">CNC G-code Preflight</text>
+  <text class="status-fail" x="-18.75" y="-226.375" font-size="6.25">FAIL · Analysis complete</text>
+  <text class="meta" x="-18.75" y="-218.5625" font-size="5.3125">3 moves · 260 mm · 1 diagnostics · 73.8 s estimated cycle time</text>
+  <path class="header-rule" d="M -18.75 -206.525 H 268.75" />
+  <rect class="travel-limit" x="0" y="-200" width="200" height="200"><title>Configured XY travel boundary (mm)</title></rect>
+  <path class="grid" d="M 50 -200 V 0 M 0 -50 H 200" />
+  <path class="grid" d="M 100 -200 V 0 M 0 -100 H 200" />
+  <path class="grid" d="M 150 -200 V 0 M 0 -150 H 200" />
+  <text class="tick" x="0" y="5.625" font-size="3.875">0</text>
+  <text class="tick" x="-3.4375000000000004" y="1.375" font-size="3.875" text-anchor="end">0</text>
+  <text class="tick" x="50" y="5.625" font-size="3.875">50</text>
+  <text class="tick" x="-3.4375000000000004" y="-48.625" font-size="3.875" text-anchor="end">50</text>
+  <text class="tick" x="100" y="5.625" font-size="3.875">100</text>
+  <text class="tick" x="-3.4375000000000004" y="-98.625" font-size="3.875" text-anchor="end">100</text>
+  <text class="tick" x="150" y="5.625" font-size="3.875">150</text>
+  <text class="tick" x="-3.4375000000000004" y="-148.625" font-size="3.875" text-anchor="end">150</text>
+  <text class="tick" x="200" y="5.625" font-size="3.875">200</text>
+  <text class="tick" x="-3.4375000000000004" y="-198.625" font-size="3.875" text-anchor="end">200</text>
+  <text class="axis-label" x="100" y="10.9375" font-size="4.5">X coordinate (mm)</text>
+  <text class="axis-label" x="-17.5" y="-100" font-size="4.5" transform="rotate(-90 -17.5 -100)">Y coordinate (mm)</text>
+  <path class="rapid" d="M 0 0 L 10 -10" data-line="5" />
+  <path class="linear" d="M 10 -10 L 10 -10" data-line="6" />
+  <path class="linear violation" d="M 10 -10 L 250 -10" data-line="7" />
+  <circle class="point" cx="0" cy="0" r="0.55"><title>Program start</title></circle>
+  <circle class="point" cx="10" cy="-10" r="0.3"><title>Line 5</title></circle>
+  <circle class="point" cx="10" cy="-10" r="0.3"><title>Line 6</title></circle>
+  <circle class="point" cx="250" cy="-10" r="0.3"><title>Line 7</title></circle>
+  <circle class="violation-point" cx="250" cy="-10" r="0.9" data-line="7"><title>Line 7: TRAVEL_LIMIT_X at X250 Y10 Z0 mm</title></circle>
+  <path class="rapid" d="M -18.75 21.9 h 6.3" />
+  <text class="legend-label" x="-10.200000000000001" y="23.25" font-size="4.5">Rapid</text>
+  <path class="linear" d="M 53.125 21.9 h 6.3" />
+  <text class="legend-label" x="61.675" y="23.25" font-size="4.5">Linear feed</text>
+  <path class="arc-cw" d="M 125 21.9 h 6.3" />
+  <text class="legend-label" x="133.55" y="23.25" font-size="4.5">CW arc</text>
+  <path class="arc-ccw" d="M 196.875 21.9 h 6.3" />
+  <text class="legend-label" x="205.425" y="23.25" font-size="4.5">CCW arc</text>
+  <text class="meta" x="-18.75" y="33.25" font-size="3.875">XY top view · red marks indicate travel-limit violations · units: mm</text>
+</svg>

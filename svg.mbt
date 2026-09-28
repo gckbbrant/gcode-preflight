@@ -173,6 +173,63 @@ fn svg_segment_class_for_report(
 }
 
 ///|
+fn svg_status_class(status : AnalysisStatus) -> String {
+  match status {
+    Pass => "status-pass"
+    Fail => "status-fail"
+    Incomplete => "status-incomplete"
+  }
+}
+
+///|
+fn svg_rounded_number(value : Double) -> String {
+  let scaled = value * 100.0
+  let rounded = if scaled >= 0.0 {
+    (scaled + 0.5).to_int()
+  } else {
+    (scaled - 0.5).to_int()
+  }
+  (rounded.to_double() / 100.0).to_string()
+}
+
+///|
+fn svg_estimate_text(report : AnalysisReport) -> String {
+  match report.estimated_time_seconds {
+    Some(seconds) => "\{svg_rounded_number(seconds)} s estimated cycle time"
+    None => "Cycle time estimate unavailable"
+  }
+}
+
+///|
+fn svg_write_text(
+  svg : StringBuilder,
+  class : String,
+  x : Double,
+  y : Double,
+  size : Double,
+  text : String,
+) -> Unit {
+  svg.write_string(
+    "  <text class=\"\{class}\" x=\"\{x}\" y=\"\{y}\" font-size=\"\{size}\">\{text}</text>\n",
+  )
+}
+
+///|
+fn svg_write_legend_item(
+  svg : StringBuilder,
+  class : String,
+  label : String,
+  x : Double,
+  y : Double,
+  font_size : Double,
+) -> Unit {
+  svg.write_string(
+    "  <path class=\"\{class}\" d=\"M \{x} \{y - font_size * 0.3} h \{font_size * 1.4}\" />\n",
+  )
+  svg_write_text(svg, "legend-label", x + font_size * 1.9, y, font_size, label)
+}
+
+///|
 /// Render a top-view SVG of the analyzed XY toolpath.
 ///
 /// Rapid moves use a dashed gray line. Feed moves and arcs use blue and purple
@@ -208,14 +265,33 @@ pub fn render_svg(report : AnalysisReport) -> String {
   } else {
     bounds.max_y - bounds.min_y
   }
-  let padding = span * 0.05 + 1.0
-  let view_x = bounds.min_x - padding
-  let view_y = -bounds.max_y - padding
-  let view_width = bounds.max_x - bounds.min_x + 2.0 * padding
-  let view_height = bounds.max_y - bounds.min_y + 2.0 * padding
+  let safe_span = span.max(1.0)
+  let font_size = (safe_span * 0.025).max(1.5)
+  let padding = safe_span * 0.05 + 2.0
+  let title_band = font_size * 4.8
+  let footer_band = font_size * 3.5
+  let map_width = bounds.max_x - bounds.min_x
+  let content_width = map_width.max(safe_span * 1.15)
+  let content_center_x = (bounds.min_x + bounds.max_x) / 2.0
+  let content_min_x = content_center_x - content_width / 2.0
+  let view_x = content_min_x - padding
+  let view_y = -bounds.max_y - padding - title_band
+  let view_width = content_width + 2.0 * padding
+  let view_height = bounds.max_y -
+    bounds.min_y +
+    2.0 * padding +
+    title_band +
+    footer_band
+  let map_top = -bounds.max_y
+  let map_bottom = -bounds.min_y
+  let content_left = content_min_x
+  let title_y = view_y + font_size * 1.55
+  let status_y = view_y + font_size * 2.9
+  let summary_y = view_y + font_size * 4.15
+  let footer_y = map_bottom + padding + font_size * 1.4
   let svg = StringBuilder()
   svg.write_string(
-    "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"\{view_x} \{view_y} \{view_width} \{view_height}\" role=\"img\" aria-label=\"CNC toolpath XY preview\">\n",
+    "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"1200\" height=\"\{1200.0 * view_height / view_width}\" viewBox=\"\{view_x} \{view_y} \{view_width} \{view_height}\" role=\"img\" aria-label=\"CNC G-code preflight toolpath report\">\n",
   )
   svg.write_string(
     "  <title>CNC G-code Preflight — \{svg_status(report.status)}</title>\n",
@@ -223,9 +299,89 @@ pub fn render_svg(report : AnalysisReport) -> String {
   svg.write_string(
     "  <style>path{fill:none;stroke-width:0.35;stroke-linecap:round;stroke-linejoin:round}.rapid{stroke:#64748b;stroke-dasharray:1.2 0.8}.linear{stroke:#2563eb}.arc-cw{stroke:#7c3aed}.arc-ccw{stroke:#db2777}.point{fill:#0f172a}.travel-limit{fill:#cbd5e1;fill-opacity:.12;stroke:#334155;stroke-width:.35;stroke-dasharray:2 1}.violation{stroke:#dc2626;stroke-width:.65}.violation-point{fill:#dc2626;stroke:#fff;stroke-width:.25}</style>\n",
   )
+  svg.write_string(
+    "  <style>text{font-family:Inter,ui-sans-serif,system-ui,sans-serif;fill:#0f172a}.title{font-weight:700}.meta,.axis-label,.tick{fill:#475569}.tick{fill:#64748b;text-anchor:middle}.axis-label{text-anchor:middle}.header-rule{stroke:#cbd5e1;stroke-width:.25}.grid{stroke:#94a3b8;stroke-opacity:.32;stroke-width:.18}.status-pass{fill:#047857}.status-fail{fill:#b91c1c}.status-incomplete{fill:#b45309}.legend-label{fill:#334155}</style>\n",
+  )
+  svg.write_string(
+    "  <rect x=\"\{view_x}\" y=\"\{view_y}\" width=\"\{view_width}\" height=\"\{view_height}\" fill=\"#f8fafc\" rx=\"\{font_size * 0.55}\" />\n",
+  )
+  svg_write_text(
+    svg,
+    "title",
+    content_left,
+    title_y,
+    font_size * 1.35,
+    "CNC G-code Preflight",
+  )
+  let status_detail = if report.analysis_complete {
+    "Analysis complete"
+  } else {
+    "Analysis incomplete"
+  }
+  svg_write_text(
+    svg,
+    svg_status_class(report.status),
+    content_left,
+    status_y,
+    font_size,
+    "\{svg_status(report.status)} · \{status_detail}",
+  )
+  svg_write_text(
+    svg,
+    "meta",
+    content_left,
+    summary_y,
+    font_size * 0.85,
+    "\{report.segments.length()} moves · \{svg_rounded_number(report.distance_mm)} mm · \{report.diagnostics.length()} diagnostics · \{svg_estimate_text(report)}",
+  )
+  svg.write_string(
+    "  <path class=\"header-rule\" d=\"M \{content_left} \{map_top - padding * 0.45} H \{content_left + content_width}\" />\n",
+  )
   if show_limits {
     svg.write_string(
       "  <rect class=\"travel-limit\" x=\"\{limits.x.min}\" y=\"\{-limits.y.max}\" width=\"\{limits.x.max - limits.x.min}\" height=\"\{limits.y.max - limits.y.min}\"><title>Configured XY travel boundary (mm)</title></rect>\n",
+    )
+  }
+  if show_limits {
+    for division in 1..<4 {
+      let x = limits.x.min +
+        (limits.x.max - limits.x.min) * division.to_double() / 4.0
+      let y = limits.y.min +
+        (limits.y.max - limits.y.min) * division.to_double() / 4.0
+      svg.write_string(
+        "  <path class=\"grid\" d=\"M \{x} \{-limits.y.max} V \{-limits.y.min} M \{limits.x.min} \{-y} H \{limits.x.max}\" />\n",
+      )
+    }
+    for division in 0..<5 {
+      let x = limits.x.min +
+        (limits.x.max - limits.x.min) * division.to_double() / 4.0
+      let y = limits.y.min +
+        (limits.y.max - limits.y.min) * division.to_double() / 4.0
+      svg_write_text(
+        svg,
+        "tick",
+        x,
+        -limits.y.min + font_size * 0.9,
+        font_size * 0.62,
+        x.to_string(),
+      )
+      let tick_y = -y + font_size * 0.22
+      svg.write_string(
+        "  <text class=\"tick\" x=\"\{limits.x.min - font_size * 0.55}\" y=\"\{tick_y}\" font-size=\"\{font_size * 0.62}\" text-anchor=\"end\">\{y}</text>\n",
+      )
+    }
+    svg_write_text(
+      svg,
+      "axis-label",
+      (limits.x.min + limits.x.max) / 2.0,
+      -limits.y.min + font_size * 1.75,
+      font_size * 0.72,
+      "X coordinate (mm)",
+    )
+    let y_label_x = limits.x.min - font_size * 2.8
+    let y_label_y = -((limits.y.min + limits.y.max) / 2.0)
+    svg.write_string(
+      "  <text class=\"axis-label\" x=\"\{y_label_x}\" y=\"\{y_label_y}\" font-size=\"\{font_size * 0.72}\" transform=\"rotate(-90 \{y_label_x} \{y_label_y})\">Y coordinate (mm)</text>\n",
     )
   }
   for segment in report.segments {
@@ -255,6 +411,48 @@ pub fn render_svg(report : AnalysisReport) -> String {
       }
     }
   }
+  let legend_x = content_left
+  let legend_gap = font_size * 11.5
+  svg_write_legend_item(
+    svg,
+    "rapid",
+    "Rapid",
+    legend_x,
+    footer_y,
+    font_size * 0.72,
+  )
+  svg_write_legend_item(
+    svg,
+    "linear",
+    "Linear feed",
+    legend_x + legend_gap,
+    footer_y,
+    font_size * 0.72,
+  )
+  svg_write_legend_item(
+    svg,
+    "arc-cw",
+    "CW arc",
+    legend_x + legend_gap * 2.0,
+    footer_y,
+    font_size * 0.72,
+  )
+  svg_write_legend_item(
+    svg,
+    "arc-ccw",
+    "CCW arc",
+    legend_x + legend_gap * 3.0,
+    footer_y,
+    font_size * 0.72,
+  )
+  svg_write_text(
+    svg,
+    "meta",
+    content_left,
+    footer_y + font_size * 1.6,
+    font_size * 0.62,
+    "XY top view · red marks indicate travel-limit violations · units: mm",
+  )
   svg.write_string("</svg>\n")
   svg.to_string()
 }

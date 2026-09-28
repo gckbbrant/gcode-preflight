@@ -67,3 +67,5 @@ jobs:
           python3 -c "import json; assert json.load(open('_build/unsupported-report.json'))['status'] == 'Incomplete'"
       - name: Regression corpus
         run: python3 scripts/check_regression_corpus.py
+      - name: Reproducible README renders
+        run: python3 scripts/generate_demo_renders.py --check

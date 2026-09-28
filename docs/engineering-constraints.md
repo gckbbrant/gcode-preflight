@@ -56,6 +56,16 @@ simulate controller lookahead, G64 corner blending, jerk limits, spindle ramp,
 feed override, or cutting load. Explicit path-control G-codes remain outside
 the supported subset and therefore cannot produce `PASS`.
 
+## Visual report contract
+
+SVG previews are generated from `AnalysisReport` values produced by the same
+CLI used in the examples. They must show the analysis status and whether the
+analysis is complete, distinguish rapid/feed/arc moves, show the configured XY
+travel envelope and axis units, and highlight travel-limit diagnostics in red.
+An incomplete program may show its analyzed prefix only when the status remains
+visible as `INCOMPLETE`. The checked-in README renders must match fresh CLI
+output; CI verifies the committed SVG files byte-for-byte.
+
 ## Scope of a clean result
 
 The supported profile is a three-axis mill using G54-G59.3 with configured

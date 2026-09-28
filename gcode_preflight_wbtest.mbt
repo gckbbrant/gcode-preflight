@@ -708,6 +708,12 @@ test "SVG contains linear and arc commands with status" {
   assert_true(svg.contains("class=\"linear\""))
   assert_true(svg.contains("class=\"arc-cw\""))
   assert_true(svg.contains("CNC G-code Preflight — INCOMPLETE"))
+  assert_true(svg.contains("X coordinate (mm)"))
+  assert_true(svg.contains("Y coordinate (mm)"))
+  assert_true(svg.contains("CW arc"))
+  assert_true(svg.contains("2 moves"))
+  assert_true(svg.contains("diagnostics ·"))
+  assert_true(svg.contains(" mm · "))
   assert_true(svg.contains(" A "))
 }
 
@@ -716,5 +722,8 @@ test "SVG labels incomplete programs without drawing a misleading path" {
   let report = analyze("G71", test_profile())
   let svg = render_svg(report)
   assert_true(svg.contains("INCOMPLETE"))
-  assert_true(!svg.contains("<path "))
+  assert_true(svg.contains("class=\"status-incomplete\""))
+  assert_true(svg.contains("class=\"grid\""))
+  assert_true(svg.contains("Rapid"))
+  assert_true(!svg.contains("data-line=\""))
 }

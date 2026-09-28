@@ -1,39 +1,21 @@
-# Architecture diagram assets
+# 架构图说明
 
-This is the selected **layered pipeline** design for the implemented CNC
-G-code preflight project. The picture follows the actual analysis flow and
-module names in the repository.
+架构图对应仓库中的程序处理流程：命令行读取 G-code 和 `MachineProfile`，调用 MoonBit 分析核心，再输出终端摘要、JSON 报告和 SVG 刀路图。
 
-- [`../images/architecture.svg`](../images/architecture.svg) is the standalone
-  vector version.
-- [`cnc-gcode-preflight-architecture.pptx`](cnc-gcode-preflight-architecture.pptx)
-  is a 16:9, one-slide PowerPoint. All visible diagram parts are native shapes,
-  text boxes, and lines, so they can be selected and changed in PowerPoint.
-- [`generate_architecture_pptx.mjs`](generate_architecture_pptx.mjs) is the
-  authoring source. Run it with Node.js 24 and `@oai/artifact-tool` 2.x
-  available to the module loader:
+[`../images/architecture.svg`](../images/architecture.svg) 是流程图的矢量文件。图中模块对应 `lexer.mbt`、`modal.mbt`、`geometry.mbt`、`timing.mbt` 和 `model.mbt`。
 
-  ```sh
-  node docs/architecture/generate_architecture_pptx.mjs
-  ```
+演示文件的生成脚本为 [`generate_architecture_pptx.mjs`](generate_architecture_pptx.mjs)，需要 Node.js 24 和 `@oai/artifact-tool` 2.x：
 
-  Optional positional arguments select the output `.pptx` and preview `.png`
-  paths. In an environment where the package name does not resolve, set
-  `ARTIFACT_TOOL_ENTRY` to the absolute path of `dist/artifact_tool.mjs`.
+```sh
+node docs/architecture/generate_architecture_pptx.mjs
+```
 
-The repository acceptance check verifies the committed PowerPoint package has
-one 16:9 slide, the expected diagram labels, and native editable shapes rather
-than embedded screenshots:
+可以用位置参数指定 `.pptx` 和 `.png` 输出路径。如果运行环境无法按包名导入依赖，可设置 `ARTIFACT_TOOL_ENTRY` 指向 `dist/artifact_tool.mjs`。
+
+运行以下命令会检查演示文件的页数、比例、图中文字和图形结构：
 
 ```sh
 python scripts/check_architecture_pptx.py
 ```
 
-## What the diagram means
-
-The CLI accepts a G-code program and `MachineProfile`, then calls the pure
-MoonBit analysis API. The core sequence is represented by `lexer.mbt`,
-`modal.mbt`, `geometry.mbt`, and `timing.mbt`; `model.mbt` defines the report
-data. The CLI emits a terminal summary, JSON report, and SVG toolpath. An
-incomplete interpretation cannot produce PASS. The cycle estimate remains a
-planning estimate and the diagram does not imply machine-safety certification.
+图中的 `PASS`、`FAIL` 和 `INCOMPLETE` 与分析报告状态一致。`PASS` 仅表示程序在当前支持范围内完整分析且没有发现确定错误；运行时间是估算值。

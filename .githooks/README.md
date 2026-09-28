@@ -1,21 +1,21 @@
-# Git Hooks
+# Git 提交钩子
 
-## Pre-commit Hook
+## 提交前检查
 
-This pre-commit hook performs automatic checks before finalizing your commit.
+提交前钩子会在执行 `git commit` 时自动运行检查。
 
-### Usage Instructions
+## 启用方法
 
-To use this pre-commit hook:
+1. 确保钩子脚本具有执行权限：
 
-1. Make the hook executable if it isn't already:
-   ```bash
+   ```sh
    chmod +x .githooks/pre-commit
    ```
 
-2. Configure Git to use the hooks in the .githooks directory:
-   ```bash
+2. 将 Git 钩子目录设为 `.githooks`：
+
+   ```sh
    git config core.hooksPath .githooks
    ```
 
-3. The hook will automatically run when you execute `git commit`
+设置完成后，`git commit` 会自动触发提交前检查。

@@ -1,53 +1,21 @@
-# Project Agents.md Guide
+# 项目开发约定
 
-This is a [MoonBit](https://docs.moonbitlang.com) project.
+这是一个 MoonBit 项目。MoonBit 官方文档见 [docs.moonbitlang.com](https://docs.moonbitlang.com)。
 
-You can browse and install extra skills here:
-<https://github.com/moonbitlang/skills>
+## 项目结构
 
-## Project Structure
+- 每个目录按 package 组织，并在 `moon.pkg` 中声明依赖；`_test.mbt` 为黑盒测试文件，`_wbtest.mbt` 为白盒测试文件。
+- 根目录的 `moon.mod` 保存模块信息。
 
-- MoonBit packages are organized per directory; each directory contains a
-  `moon.pkg` file listing its dependencies. Each package has its files and
-  blackbox test files (ending in `_test.mbt`) and whitebox test files (ending in
-  `_wbtest.mbt`).
+## 代码约定
 
-- In the toplevel directory, there is a `moon.mod` file listing module
-  metadata.
+- MoonBit 代码按 `///|` 分块。块之间可以独立组织，不依赖文件中的先后顺序。
+- 弃用的代码块尽量放入各自目录中的 `deprecated.mbt`。
 
-## Coding convention
+## 常用工具
 
-- MoonBit code is organized in block style, each block is separated by `///|`,
-  the order of each block is irrelevant. In some refactorings, you can process
-  block by block independently.
-
-- Try to keep deprecated blocks in file called `deprecated.mbt` in each
-  directory.
-
-## Tooling
-
-- `moon fmt` is used to format your code properly.
-
-- `moon ide` provides project navigation helpers like `peek-def`, `outline`, and
-  `find-references`. See $moonbit-agent-guide for details.
-
-- `moon info` is used to update the generated interface of the package, each
-  package has a generated interface file `.mbti`, it is a brief formal
-  description of the package. If nothing in `.mbti` changes, this means your
-  change does not bring the visible changes to the external package users, it is
-  typically a safe refactoring.
-
-- In the last step, run `moon info && moon fmt` to update the interface and
-  format the code. Check the diffs of `.mbti` file to see if the changes are
-  expected.
-
-- Run `moon test` to check tests pass. MoonBit supports snapshot testing; when
-  changes affect outputs, run `moon test --update` to refresh snapshots.
-
-- Prefer `assert_eq` or `assert_true(pattern is Pattern(...))` for results that
-  are stable or very unlikely to change. For snapshot tests that record
-  structured debugging output, derive `Debug` and use `debug_inspect`, rather
-  than deriving `Show` for debugging. For solid, well-defined results (e.g.
-  scientific computations), prefer assertion tests. You can use
-  `moon coverage analyze > uncovered.log` to see which parts of your code are
-  not covered by tests.
+- 使用 `moon fmt` 格式化代码。
+- 使用 `moon ide` 的 `peek-def`、`outline` 和 `find-references` 查看定义与引用。
+- 使用 `moon info` 更新 package 生成的 `.mbti` 接口文件。修改接口后检查 `.mbti` 差异是否符合预期。
+- 完成代码修改后运行 `moon info`、`moon fmt` 和 `moon test`。快照测试的预期输出需要更新时，运行 `moon test --update`。
+- 对稳定结果优先使用 `assert_eq` 或模式断言。需要检查结构化调试输出时使用 `Debug` 和 `debug_inspect`。可以运行 `moon coverage analyze` 查看测试覆盖情况。

@@ -1,96 +1,43 @@
-# Engineering constraints
+# 分析范围与工程约束
 
-## Incomplete analysis cannot pass
+## 分析不完整时不得通过
 
-The analyzer may report `PASS` only when it has fully interpreted every input
-construct that can affect motion, coordinates, or the requested estimate.
-Any unsupported or ambiguous construct that could change those results makes
-the report `INCOMPLETE`; a later clean block cannot restore `PASS`.
+只有在完整解释了所有可能影响运动、坐标或时间估算的输入后，分析器才可以报告 `PASS`。遇到未支持或含义不明确、且可能影响结果的指令时，应报告 `INCOMPLETE`；后续指令不能消除这一状态。
 
-Examples that require `INCOMPLETE` include:
+以下情况应报告 `INCOMPLETE`：
 
-- macros, parameter expressions, subprogram calls, and canned cycles;
-- arcs outside G17/XY or unsupported arc geometry;
-- G18/G19, G41/G42, G43, G52/G92, and other unsupported coordinate or tool
-  transformations;
-- an unknown G/M code that may affect execution state;
-- a motion block before required units, distance, work-coordinate, and
-  compensation-cancel modes are established; G53 linear moves require units
-  and compensation-cancel modes but do not depend on G90/G91 or a work offset;
-  other moves require an explicit work coordinate system; arcs require G17,
-  I/J arcs require G90.1 or G91.1, and feed moves require G94;
-- a selected G55-G59.3 system whose translation is absent from the profile;
-- a profile work-system entry with nonzero XY rotation, which this analyzer
-  does not transform;
-- any movement when the starting position is unknown. Provide
-  initial_position_g54_mm in the profile to identify the first machine point;
-- unsupported semantics anywhere in the program, even when preceding moves
-  were analyzable.
+- 宏、参数表达式、子程序调用和固定循环；
+- G17/XY 以外的圆弧，或当前不支持的圆弧形式；
+- G18/G19、G41/G42、G43、G52/G92 等未支持的刀具或坐标变换；
+- 可能改变执行状态的未知 G/M 指令；
+- 运动开始前缺少所需的单位、距离模式、工作坐标系或补偿取消模式。G53 直线运动需要单位和补偿取消模式，但不依赖 G90/G91 或工作坐标系；其他运动需要明确的工作坐标系；圆弧需要 G17，I/J 圆弧需要 G90.1 或 G91.1，进给运动需要 G94；
+- 选中的 G55-G59.3 坐标系没有配置对应偏置；
+- 配置了非零 XY 旋转，而分析器未实现旋转变换；
+- 程序包含运动，但机床起始位置未知。应在配置中提供 `initial_position_g54_mm`；
+- 程序任意位置存在会影响分析的未支持语义，即使之前的运动可以分析。
 
-Fully understood program errors such as missing F/S, malformed I/J or R arc
-geometry, G53 on an arc, missing G4 P, or a travel-limit violation produce
-FAIL. A missing tool-change duration makes the time estimate incomplete while geometric
-analysis can remain complete.
+能够明确判定的程序错误应报告 `FAIL`，例如缺少 F/S、I/J 或 R 圆弧参数无效、G53 与圆弧组合、G4 缺少 P，或运动越出配置行程。缺少换刀时长时，几何分析仍可完整，但时间估算不完整。
 
-The implementation must express this rule in the report-status calculation
-and test that unsupported or ambiguous input never produces `PASS`.
+## 运行时间估算
 
-## Cycle-time estimate assumptions
+可选配置 `axis_max_velocity_mm_per_min` 和 `axis_max_acceleration_mm_per_sec2` 分别描述 XYZ 轴的速度与加速度上限。配置值为零或负数时，profile 无效，报告为 `INCOMPLETE`。
 
-The optional `axis_max_velocity_mm_per_min` and
-`axis_max_acceleration_mm_per_sec2` profile vectors describe positive XYZ
-limits in machine units. A supplied vector with a zero or negative component
-makes the profile invalid and the report `INCOMPLETE`.
+未提供轴上限时，使用按路径长度计算的名义时间。提供速度上限后，依据每段运动在各轴上的方向分量限制 G0 快速运动或 G1/G2/G3 进给速度。提供加速度上限后，按每段运动从静止到静止计算梯形速度曲线；短距离运动无法达到限速时，使用三角形速度曲线。圆弧速度还受 XY 切向分量和向心加速度约束；模型将每轴配置加速度的一半用于圆弧切向加速度。
 
-Without these vectors, preserve the nominal path-length estimate. Axis velocity
-limits cap the requested G0 rapid or G1/G2/G3 feed by each moving axis's
-direction component. With acceleration limits, estimate each programmed move
-independently from rest to rest using a trapezoidal speed profile, or a
-triangular profile when the move is too short to reach the capped speed. Arc
-speed uses the XY tangent components and a centripetal-acceleration cap; half
-of each configured axis acceleration is reserved for tangential acceleration
-on arcs.
+报告通过 `estimated_time_model` 标明所用模型。当前估算不模拟控制器前瞻、G64 拐角融合、急动度限制、主轴升速、进给倍率和实际切削负载。明确的路径控制指令不在支持范围内，不能得到 `PASS`。
 
-The report must identify its estimate model. This simplified model does not
-simulate controller lookahead, G64 corner blending, jerk limits, spindle ramp,
-feed override, or cutting load. Explicit path-control G-codes remain outside
-the supported subset and therefore cannot produce `PASS`.
+## SVG 刀路图
 
-## Visual report contract
+SVG 必须显示分析状态和完整性，区分快速、进给及圆弧运动，画出配置的 XY 行程范围和轴单位，并用红色标记越界诊断。不完整程序可以展示已分析的前缀，但必须明确显示 `INCOMPLETE`。README 中的示例图由同一 CLI 生成；CI 会检查提交的 SVG 与当前生成结果一致。
 
-SVG previews are generated from `AnalysisReport` values produced by the same
-CLI used in the examples. They must show the analysis status and whether the
-analysis is complete, distinguish rapid/feed/arc moves, show the configured XY
-travel envelope and axis units, and highlight travel-limit diagnostics in red.
-An incomplete program may show its analyzed prefix only when the status remains
-visible as `INCOMPLETE`. The checked-in README renders must match fresh CLI
-output; CI verifies the committed SVG files byte-for-byte.
+## 完整分析的支持范围
 
-## Scope of a clean result
+当前支持三轴铣床的 G54-G59.3 平移偏置、单块 G53 直线运动、G17、毫米/英寸单位、绝对/增量端点坐标、绝对/增量 I/J 圆心、有符号 R 圆弧和 G94 每分钟进给。G53 使用机床坐标且只作用于当前程序块；下一块恢复选定的工作坐标系。工作坐标旋转不受支持。
 
-The supported profile is a three-axis mill using G54-G59.3 with configured
-XYZ translations, non-modal G53 linear moves, G17, millimeter/inch units,
-absolute/incremental endpoint coordinates, absolute/incremental I/J arc
-centers, signed R-format arcs, and G94 feed-per-minute. G53 always addresses
-machine coordinates and applies to one block; its next move returns to the
-selected work system. Rotated work systems are not modeled. An I/J arc
-requires an explicit G90.1 or G91.1 mode; G90.1 requires both I and J. Positive
-R selects a sweep up to 180 degrees; negative R selects a sweep greater than
-180 degrees. R format requires distinct XY endpoints, so full circles use I/J
-centers. R arcs within
-15 degrees of a half or full circle receive a non-blocking rounding-sensitivity
-warning. The profile's optional initial_position_g54_mm field
-is required for programs that move; it is a G54 coordinate in millimeters and
-is converted to machine coordinates using g54_offset_mm. Other work positions
-use their matching additional_work_offsets_mm entry. Travel checks cover
-programmed control points and interpolated XY arc extrema. They do not account
-for tool radius, holder geometry, tool length compensation, fixture geometry,
-controller lookahead, acceleration, or actual cutting load. `PASS` means only
-that the supported subset was completely analyzed without detected profile
-violations.
+I/J 圆弧必须显式设置 G90.1 或 G91.1；G90.1 需要同时提供 I、J。正 R 选择不超过 180 度的圆弧，负 R 选择大于 180 度的圆弧。R 圆弧要求 XY 起终点不同；整圆须使用 I/J 圆心。R 圆弧的夹角接近半圆或整圆（15 度以内）时，会给出舍入敏感性提示。
 
-Travel-limit diagnostics carry the exact machine-space point in `point_mm`.
-The report also carries the configured X/Y/Z limits so `render_svg(report)` can
-draw the XY envelope and highlight each violating move and point without
-parsing human-readable diagnostic messages. A Z violation is marked at its XY
-projection and includes the Z value in the marker title.
+若程序包含运动，profile 必须提供 `initial_position_g54_mm`。该位置以 G54 坐标和毫米表示，分析时结合 `g54_offset_mm` 换算为机床坐标。其他工作坐标系使用对应的 `additional_work_offsets_mm` 配置。行程检查覆盖程序控制点和 XY 圆弧极值，不考虑刀具半径、刀柄、刀具长度补偿、夹具、控制器前瞻、加速度或实际切削负载。
+
+`PASS` 仅表示程序在当前支持范围内已完整分析，且没有发现超出 profile 配置的违规；它不构成安全认证或机床运行许可。
+
+越界诊断在 `point_mm` 中保留机床坐标位置。报告同时包含 XYZ 行程范围，供 `render_svg(report)` 绘制 XY 行程区域并标出违规点；Z 轴违规会投影到 XY 图中，并在标记说明中显示 Z 值。

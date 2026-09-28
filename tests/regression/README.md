@@ -1,35 +1,17 @@
-# Regression corpus
+# G-code 回归用例
 
-`cases.json` is an executable, reviewable contract for representative
-programs. It checks status, motion kinds, path length, arc sweep, estimate
-completeness, diagnostic codes/source lines, and exact points used by the SVG.
-Run it with:
+`cases.json` 收录一组可重复运行的程序样例及预期结果。检查内容包括状态、运动类型、路径长度、圆弧角度、估算完整性、诊断代码和源程序行号，以及 SVG 使用的精确越界坐标。
+
+运行回归用例：
 
 ```sh
-python3 scripts/check_regression_corpus.py
+python scripts/check_regression_corpus.py
 ```
 
-The three `linuxcnc-*.nc` programs adapt center-format examples from the
-[LinuxCNC G-code reference](https://linuxcnc.org/docs/html/gcode.html): a CW/CCW
-pair, a full circle, and an XY helical arc. The remaining fixtures cover
-incremental coordinates, inch-to-mm conversion with G54 offset, dwell/tool
-change, missing feed, and an arc whose endpoints fit while its interior
-cardinal points exceed the configured X travel. The R-format cases cover
-positive minor and negative major sweeps, a helical arc, inch conversion,
-interior travel violations, impossible chords, and rejection of R full circles.
-The diametric arc fixture also confirms the rounding-sensitivity warning does
-not change a valid program's PASS status.
+`linuxcnc-*.nc` 中的三个程序取自 LinuxCNC G-code 文档所示的圆弧形式，覆盖顺时针/逆时针圆弧、整圆和 XY 平面螺旋插补。其他用例检查增量坐标、英寸换算、G54 偏置、暂停、换刀、缺少进给，以及弧线中间越界等情况。
 
-The coordinate-system fixtures adapt the official LinuxCNC definitions for
-G54-G59.3 and non-modal G53 moves. They check every work-system selector,
-machine-space segment start/end coordinates, an offset-free G53 block under
-G91, restoration of the active work offset on the next block, and incomplete
-or failing results for missing offsets and G53 arcs
-([G-code reference](https://linuxcnc.org/docs/html/gcode/g-code.html),
-[coordinate systems](https://linuxcnc.org/docs/html/gcode/coordinates.html)).
-These are source-grounded expected-value comparisons; the CI runner does not
-launch a LinuxCNC interpreter.
+R 圆弧用例覆盖正 R 小于或等于半圆、负 R 大于半圆、螺旋运动、单位换算、弧线中间越界、无法构造的弦长和 R 格式整圆。直径方向的圆弧用例检查舍入敏感性提示不会改变有效程序的 `PASS` 状态。
 
-The corpus stays within the project's explicitly supported subset. It records
-expected behavior; it is not a general certification of arbitrary controller
-dialects.
+坐标系用例覆盖 G54-G59.3 和单块 G53，包括各坐标系选择、机床坐标下的起点与终点、G91 下不依赖工作偏置的 G53 运动、后续程序块恢复工作偏置，以及偏置缺失和 G53 圆弧的错误状态。
+
+这些用例只验证项目声明支持的指令子集及其预期结果，不代表对其他控制器方言的认证。

@@ -90,6 +90,5 @@ python scripts/acceptance_check.py
 
 ## 相关文件
 
-- [项目简述](docs/project-brief.zh-CN.md)
 - [工程约束](docs/engineering-constraints.md)
 - [Apache-2.0 许可证](LICENSE)

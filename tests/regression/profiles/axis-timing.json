@@ -1,0 +1,12 @@
+{
+  "x": { "min": 0.0, "max": 200.0 },
+  "y": { "min": 0.0, "max": 200.0 },
+  "z": { "min": -100.0, "max": 100.0 },
+  "g54_offset_mm": { "x": 0.0, "y": 0.0, "z": 0.0 },
+  "initial_position_g54_mm": { "x": 0.0, "y": 0.0, "z": 0.0 },
+  "rapid_mm_per_min": 3000.0,
+  "axis_max_velocity_mm_per_min": { "x": 2400.0, "y": 2400.0, "z": 1200.0 },
+  "axis_max_acceleration_mm_per_sec2": { "x": 500.0, "y": 500.0, "z": 250.0 },
+  "arc_tolerance_mm": 0.02,
+  "tool_change_seconds": 20.0
+}

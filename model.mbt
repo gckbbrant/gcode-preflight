@@ -41,6 +41,8 @@ pub(all) struct MachineProfile {
   additional_work_offsets_mm : Array[WorkCoordinateOffset]?
   initial_position_g54_mm : Vec3?
   rapid_mm_per_min : Double
+  axis_max_velocity_mm_per_min : Vec3?
+  axis_max_acceleration_mm_per_sec2 : Vec3?
   arc_tolerance_mm : Double
   tool_change_seconds : Double?
 } derive(ToJson, FromJson)
@@ -106,6 +108,7 @@ pub(all) struct AnalysisReport {
   distance_mm : Double
   dwell_seconds : Double
   tool_changes : Int
+  estimated_time_model : String
   estimated_time_seconds : Double?
 } derive(ToJson)
 

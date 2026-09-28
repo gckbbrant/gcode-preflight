@@ -35,6 +35,27 @@ analysis can remain complete.
 The implementation must express this rule in the report-status calculation
 and test that unsupported or ambiguous input never produces `PASS`.
 
+## Cycle-time estimate assumptions
+
+The optional `axis_max_velocity_mm_per_min` and
+`axis_max_acceleration_mm_per_sec2` profile vectors describe positive XYZ
+limits in machine units. A supplied vector with a zero or negative component
+makes the profile invalid and the report `INCOMPLETE`.
+
+Without these vectors, preserve the nominal path-length estimate. Axis velocity
+limits cap the requested G0 rapid or G1/G2/G3 feed by each moving axis's
+direction component. With acceleration limits, estimate each programmed move
+independently from rest to rest using a trapezoidal speed profile, or a
+triangular profile when the move is too short to reach the capped speed. Arc
+speed uses the XY tangent components and a centripetal-acceleration cap; half
+of each configured axis acceleration is reserved for tangential acceleration
+on arcs.
+
+The report must identify its estimate model. This simplified model does not
+simulate controller lookahead, G64 corner blending, jerk limits, spindle ramp,
+feed override, or cutting load. Explicit path-control G-codes remain outside
+the supported subset and therefore cannot produce `PASS`.
+
 ## Scope of a clean result
 
 The supported profile is a three-axis mill using G54-G59.3 with configured

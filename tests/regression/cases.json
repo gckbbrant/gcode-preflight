@@ -313,5 +313,17 @@
     "diagnostics": [
       { "code": "G53_REQUIRES_LINEAR_MOTION", "line": 2 }
     ]
+  },
+  {
+    "id": "axis-aware-cycle-time",
+    "program": "../../samples/valid.nc",
+    "profile": "profiles/axis-timing.json",
+    "status": "Pass",
+    "segment_count": 6,
+    "distance_mm": 129.83185307179588,
+    "estimate_complete": true,
+    "estimated_time_model": "axis_trapezoidal_rest_to_rest",
+    "estimated_time_seconds": 42.58303728102584,
+    "diagnostics": []
   }
 ]

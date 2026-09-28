@@ -77,6 +77,14 @@ def compare_case(case: dict, output_dir: Path) -> None:
                 f"{case['id']}: expected segment kinds "
                 f"{case['segment_kinds']}, got {actual}"
             )
+    if "estimated_time_model" in case:
+        actual = report.get("estimated_time_model")
+        expected = case["estimated_time_model"]
+        if actual != expected:
+            raise AssertionError(
+                f"{case['id']}: expected estimated_time_model={expected}, "
+                f"got {actual}"
+            )
     for field, coordinate in (
         ("segment_starts_mm", "start_mm"),
         ("segment_endpoints_mm", "end_mm"),

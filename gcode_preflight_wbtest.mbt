@@ -13,6 +13,8 @@ fn test_profile_with(
     additional_work_offsets_mm: None,
     initial_position_g54_mm: initial,
     rapid_mm_per_min: 3000.0,
+    axis_max_velocity_mm_per_min: None,
+    axis_max_acceleration_mm_per_sec2: None,
     arc_tolerance_mm: 0.01,
     tool_change_seconds: Some(15.0),
   }
@@ -608,7 +610,71 @@ test "cycle time includes rapid, feed, dwell, and configured tool change" {
   assert_true(report.status is Pass)
   assert_eq(report.tool_changes, 1)
   assert_true((report.dwell_seconds - 2.0).abs() < 0.000001)
+  assert_eq(report.estimated_time_model, "nominal_path_length")
   assert_true((report.estimated_time_seconds.unwrap() - 18.2).abs() < 0.000001)
+}
+
+///|
+test "axis velocity limits cap coordinated diagonal feed" {
+  let profile = {
+    ..test_profile(),
+    axis_max_velocity_mm_per_min: Some({ x: 600.0, y: 1200.0, z: 1200.0, }),
+  }
+  let report = analyze("G21 G90 G54 G40 G49 G94 F1200\nG1 X10 Y10\nM2", profile)
+  assert_true(report.status is Pass)
+  assert_eq(report.estimated_time_model, "axis_velocity_limited")
+  assert_true((report.estimated_time_seconds.unwrap() - 1.0).abs() < 0.000001)
+}
+
+///|
+test "axis acceleration uses trapezoidal and triangular segment profiles" {
+  let profile = {
+    ..test_profile(),
+    axis_max_acceleration_mm_per_sec2: Some({ x: 100.0, y: 100.0, z: 100.0, }),
+  }
+  let long_move = analyze("G21 G90 G54 G40 G49 G94 F600\nG1 X10\nM2", profile)
+  assert_eq(long_move.estimated_time_model, "axis_trapezoidal_rest_to_rest")
+  assert_true(
+    (long_move.estimated_time_seconds.unwrap() - 1.1).abs() < 0.000001,
+  )
+  let short_move = analyze("G21 G90 G54 G40 G49 G94 F600\nG1 X0.1\nM2", profile)
+  assert_true(
+    (short_move.estimated_time_seconds.unwrap() - 2.0 * (0.1 / 100.0).sqrt()).abs() <
+    0.000001,
+  )
+}
+
+///|
+test "arc timing reserves axis acceleration for centripetal motion" {
+  let profile = {
+    ..test_profile_with(
+      Some({ x: 10.0, y: 0.0, z: 0.0, }),
+      { x: 0.0, y: 0.0, z: 0.0, },
+      100.0,
+      100.0,
+    ),
+    axis_max_acceleration_mm_per_sec2: Some({ x: 100.0, y: 100.0, z: 100.0, }),
+  }
+  let report = analyze(
+    "G17 G21 G90 G91.1 G54 G40 G49 G94 F3600\nG3 X0 Y10 I-10 J0\nM2", profile,
+  )
+  assert_true(report.status is Pass)
+  assert_true(
+    report.estimated_time_seconds.unwrap() > 15.707963267948966 / 60.0,
+  )
+  assert_true(report.estimated_time_seconds.unwrap() < 2.0)
+}
+
+///|
+test "nonpositive optional axis timing limits make the profile incomplete" {
+  let profile = {
+    ..test_profile(),
+    axis_max_velocity_mm_per_min: Some({ x: 0.0, y: 100.0, z: 100.0, }),
+  }
+  let report = analyze("G21 G90 G54 G40 G49 G0 X1", profile)
+  assert_true(report.status is Incomplete)
+  assert_eq(report.estimated_time_seconds, None)
+  assert_true(report.diagnostics.any(d => d.code == "INVALID_PROFILE"))
 }
 
 ///|

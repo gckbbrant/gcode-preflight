@@ -38,17 +38,28 @@ fn validate_profile(profile : MachineProfile) -> Array[Diagnostic] {
     Some(seconds) => seconds < 0.0
     None => false
   }
+  let invalid_velocity_limits = match profile.axis_max_velocity_mm_per_min {
+    Some(limits) => limits.x <= 0.0 || limits.y <= 0.0 || limits.z <= 0.0
+    None => false
+  }
+  let invalid_acceleration_limits = match
+    profile.axis_max_acceleration_mm_per_sec2 {
+    Some(limits) => limits.x <= 0.0 || limits.y <= 0.0 || limits.z <= 0.0
+    None => false
+  }
   let invalid = profile.x.min >= profile.x.max ||
     profile.y.min >= profile.y.max ||
     profile.z.min >= profile.z.max ||
     profile.rapid_mm_per_min <= 0.0 ||
     profile.arc_tolerance_mm <= 0.0 ||
     tool_change_invalid ||
+    invalid_velocity_limits ||
+    invalid_acceleration_limits ||
     additional_work_offsets_invalid(profile)
   if invalid {
     diagnostics.push({
       code: "INVALID_PROFILE",
-      message: "Axis limits must have positive range; rapid speed and arc tolerance must be positive; tool-change time cannot be negative; additional work offsets must use unique G55-G59.3 names with no nonzero rotation.",
+      message: "Travel ranges, configured axis velocity and acceleration limits, rapid speed, and arc tolerance must be positive; tool-change time cannot be negative; additional work offsets must use unique G55-G59.3 names with no nonzero rotation.",
       line: None,
       severity: Error,
       incomplete: true,
@@ -143,6 +154,14 @@ pub fn analyze(program : String, profile : MachineProfile) -> AnalysisReport {
     profile.z.min >= profile.z.max ||
     profile.rapid_mm_per_min <= 0.0 ||
     profile.arc_tolerance_mm <= 0.0 ||
+    (match profile.axis_max_velocity_mm_per_min {
+      Some(limits) => limits.x <= 0.0 || limits.y <= 0.0 || limits.z <= 0.0
+      None => false
+    }) ||
+    (match profile.axis_max_acceleration_mm_per_sec2 {
+      Some(limits) => limits.x <= 0.0 || limits.y <= 0.0 || limits.z <= 0.0
+      None => false
+    }) ||
     additional_work_offsets_invalid(profile) {
     execution_state_known = false
   }
@@ -293,18 +312,11 @@ pub fn analyze(program : String, profile : MachineProfile) -> AnalysisReport {
   let analysis_complete = !diagnostics.any(d => d.incomplete)
   let mut estimated_time_seconds = dwell_seconds
   let mut estimate_complete = true
+  let estimated_time_model = time_estimate_model(profile)
   for segment in segments {
-    match segment.kind {
-      Rapid =>
-        estimated_time_seconds += segment.length_mm /
-          profile.rapid_mm_per_min *
-          60.0
-      Linear | ClockwiseArc | CounterclockwiseArc =>
-        match segment.feed_mm_per_min {
-          Some(feed) if feed > 0.0 =>
-            estimated_time_seconds += segment.length_mm / feed * 60.0
-          _ => estimate_complete = false
-        }
+    match segment_cycle_time_seconds(segment, profile) {
+      Some(seconds) => estimated_time_seconds += seconds
+      None => estimate_complete = false
     }
   }
   if tool_changes > 0 {
@@ -349,6 +361,7 @@ pub fn analyze(program : String, profile : MachineProfile) -> AnalysisReport {
     distance_mm: total_distance_mm,
     dwell_seconds,
     tool_changes,
+    estimated_time_model,
     estimated_time_seconds: estimated_time,
   }
 }

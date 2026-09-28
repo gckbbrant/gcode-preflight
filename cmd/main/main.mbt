@@ -42,6 +42,7 @@ fn human_report(report : @app.AnalysisReport) -> String {
   output.write_string("\{path_length_label}: \{report.distance_mm} mm\n")
   output.write_string("Dwell time: \{report.dwell_seconds} s\n")
   output.write_string("Tool changes: \{report.tool_changes}\n")
+  output.write_string("Time model: \{report.estimated_time_model}\n")
   match report.estimated_time_seconds {
     Some(seconds) => output.write_string("Estimated cycle time: \{seconds} s\n")
     None => output.write_string("Estimated cycle time: unavailable\n")

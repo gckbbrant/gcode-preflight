@@ -161,6 +161,7 @@ def main() -> int:
         ("Native CLI type check", ["moon", "check", "--deny-warn", "--target", "native", "cmd/main"], 0),
         ("CLI regression corpus", [sys.executable, "scripts/check_regression_corpus.py"], 0),
         ("Reproducible README renders", [sys.executable, "scripts/generate_demo_renders.py", "--check"], 0),
+        ("Editable architecture PPTX", [sys.executable, "scripts/check_architecture_pptx.py"], 0),
     )
     checks = [
         run_command(name, command, out / f"{index:02d}-{name.lower().replace(' ', '-')}.log", expected)
